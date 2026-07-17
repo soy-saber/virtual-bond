@@ -6,6 +6,10 @@ interface VirtualBondAPI {
     toggleMaximize: () => Promise<boolean>
     close: () => Promise<void>
     setMode: (mode: 'pet' | 'room') => Promise<void>
+    showContextMenu: () => void
+    beginDrag: (screenX: number, screenY: number) => void
+    dragTo: (screenX: number, screenY: number) => void
+    endDrag: () => void
   }
   pet: {
     onSay: (listener: (message: string) => void) => () => void

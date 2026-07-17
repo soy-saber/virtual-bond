@@ -4,6 +4,7 @@ import { onBeforeUnmount, onMounted, ref } from 'vue'
 const props = defineProps<{ name: string; mood: string }>()
 const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
 const isAwake = ref(false)
+const isDragging = ref(false)
 const showBubble = ref(true)
 const bubbleText = ref('晚上好，我在这里。')
 let removeSayListener: (() => void) | undefined
@@ -36,11 +37,41 @@ onBeforeUnmount(() => removeSayListener?.())
 function openRoom(): void {
   emit('openRoom')
 }
+
+function startDrag(event: PointerEvent): void {
+  if (event.button !== 0) return
+  isDragging.value = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+  window.api.window.beginDrag(event.screenX, event.screenY)
+}
+
+function moveDrag(event: PointerEvent): void {
+  if (!isDragging.value) return
+  window.api.window.dragTo(event.screenX, event.screenY)
+}
+
+function endDrag(event: PointerEvent): void {
+  if (!isDragging.value) return
+  isDragging.value = false
+  ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
+  window.api.window.endDrag()
+}
+
+function showContextMenu(): void {
+  window.api.window.showContextMenu()
+}
 </script>
 
 <template>
-  <main class="pet-shell" @dblclick="openRoom">
-    <div class="pet-drag-surface" @mousedown="wake">
+  <main class="pet-shell" @dblclick="openRoom" @contextmenu.prevent="showContextMenu">
+    <div
+      class="pet-drag-surface"
+      @pointerdown="startDrag"
+      @pointermove="moveDrag"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+      @mousedown="wake"
+    >
       <div v-if="showBubble" class="pet-bubble">
         <span>{{ bubbleText }}</span>
         <small>{{ mood }}</small>

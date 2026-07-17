@@ -7,7 +7,13 @@ const api = {
     minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggle-maximize'),
     close: (): Promise<void> => ipcRenderer.invoke('window:close'),
-    setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode)
+    setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode),
+    showContextMenu: (): void => ipcRenderer.send('window:show-context-menu'),
+    beginDrag: (screenX: number, screenY: number): void =>
+      ipcRenderer.send('window:drag-start', screenX, screenY),
+    dragTo: (screenX: number, screenY: number): void =>
+      ipcRenderer.send('window:drag-move', screenX, screenY),
+    endDrag: (): void => ipcRenderer.send('window:drag-end')
   },
   pet: {
     onSay: (listener: (message: string) => void): (() => void) => {

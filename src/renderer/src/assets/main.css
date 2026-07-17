@@ -21,8 +21,8 @@ button {
 .pet-drag-surface {
   position: absolute;
   inset: 0;
-  -webkit-app-region: drag;
   cursor: grab;
+  touch-action: none;
 }
 .pet-drag-surface:active {
   cursor: grabbing;

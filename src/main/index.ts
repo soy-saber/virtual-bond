@@ -27,6 +27,7 @@ let currentMode: WindowMode = 'pet'
 let isQuitting = false
 let savePositionTimer: NodeJS.Timeout | undefined
 let petBounds: Rectangle | undefined
+let dragOrigin: { mouseX: number; mouseY: number; windowX: number; windowY: number } | undefined
 
 function defaultPetBounds(): Rectangle {
   const workArea = screen.getPrimaryDisplay().workArea
@@ -225,6 +226,28 @@ app.whenReady().then(() => {
     if (window) setWindowMode(window, mode)
   })
   ipcMain.handle('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.hide())
+  ipcMain.on('window:show-context-menu', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (window) createContextMenu().popup({ window })
+  })
+  ipcMain.on('window:drag-start', (event, mouseX: number, mouseY: number) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window || currentMode !== 'pet') return
+    const [windowX, windowY] = window.getPosition()
+    dragOrigin = { mouseX, mouseY, windowX, windowY }
+  })
+  ipcMain.on('window:drag-move', (event, mouseX: number, mouseY: number) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window || !dragOrigin || currentMode !== 'pet') return
+    window.setPosition(
+      Math.round(dragOrigin.windowX + mouseX - dragOrigin.mouseX),
+      Math.round(dragOrigin.windowY + mouseY - dragOrigin.mouseY)
+    )
+  })
+  ipcMain.on('window:drag-end', () => {
+    dragOrigin = undefined
+    schedulePetBoundsSave()
+  })
 
   mainWindow = createWindow()
   createTray()
