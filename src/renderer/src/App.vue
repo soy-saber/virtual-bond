@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import PetView from './PetView.vue'
 
 type Message = {
@@ -45,6 +45,7 @@ const closeRoom = async (): Promise<void> => {
   isRoomOpen.value = false
   await window.api.window.setMode('pet')
 }
+let removeOpenRoomListener: (() => void) | undefined
 
 const formatTime = (value: string): string =>
   new Intl.DateTimeFormat('zh-CN', {
@@ -59,6 +60,7 @@ async function scrollToLatest(behavior: 'auto' | 'smooth' = 'smooth'): Promise<v
 }
 
 onMounted(async () => {
+  removeOpenRoomListener = window.api.pet.onOpenRoom(() => void openRoom())
   try {
     companion.value = await window.api.character.getDefault()
     messages.value = await window.api.conversation.list(companion.value.id)
@@ -69,6 +71,8 @@ onMounted(async () => {
     isLoading.value = false
   }
 })
+
+onBeforeUnmount(() => removeOpenRoomListener?.())
 
 async function sendMessage(): Promise<void> {
   const content = draft.value.trim()

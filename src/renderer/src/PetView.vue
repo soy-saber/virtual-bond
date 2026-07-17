@@ -1,10 +1,18 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
-defineProps<{ name: string; mood: string }>()
+const props = defineProps<{ name: string; mood: string }>()
 const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
 const isAwake = ref(false)
 const showBubble = ref(true)
+const bubbleText = ref('晚上好，我在这里。')
+let removeSayListener: (() => void) | undefined
+
+function say(message: string): void {
+  bubbleText.value = message
+  showBubble.value = true
+  wake()
+}
 
 function wake(): void {
   isAwake.value = true
@@ -13,6 +21,17 @@ function wake(): void {
     isAwake.value = false
   }, 1800)
 }
+
+function shareMoment(): void {
+  emit('quickAction', '分享此刻')
+  say('不用急着做什么，陪我待一会儿就好。')
+}
+
+onMounted(() => {
+  removeSayListener = window.api.pet.onSay(say)
+})
+
+onBeforeUnmount(() => removeSayListener?.())
 
 function openRoom(): void {
   emit('openRoom')
@@ -23,12 +42,12 @@ function openRoom(): void {
   <main class="pet-shell" @dblclick="openRoom">
     <div class="pet-drag-surface" @mousedown="wake">
       <div v-if="showBubble" class="pet-bubble">
-        <span>晚上好，我在这里。</span>
+        <span>{{ bubbleText }}</span>
         <small>{{ mood }}</small>
       </div>
 
       <div class="pet-aura"></div>
-      <div class="pet-character" :class="{ awake: isAwake }" aria-label="澄夏桌宠">
+      <div class="pet-character" :class="{ awake: isAwake }" :aria-label="`${props.name}桌宠`">
         <div class="pet-hair pet-hair-back"></div>
         <div class="pet-ear left"></div>
         <div class="pet-ear right"></div>
@@ -48,7 +67,7 @@ function openRoom(): void {
 
     <div class="pet-controls no-drag">
       <button title="回应一下" @click="wake">✦</button>
-      <button title="分享此刻" @click="emit('quickAction', '分享此刻')">☕</button>
+      <button title="分享此刻" @click="shareMoment">☕</button>
       <button title="打开陪伴空间" class="open-room" @click="openRoom">
         进入空间 <span>↗</span>
       </button>

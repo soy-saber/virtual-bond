@@ -185,6 +185,33 @@ export function createDemoReply(characterId: string): MessageRecord {
   )
 }
 
+export function getSetting<T>(key: string, fallback: T): T {
+  const row = getDatabase()
+    .prepare('SELECT value_json AS valueJson FROM app_settings WHERE key = ?')
+    .get(key) as { valueJson: string } | undefined
+  if (!row) return fallback
+
+  try {
+    return JSON.parse(row.valueJson) as T
+  } catch {
+    return fallback
+  }
+}
+
+export function setSetting<T>(key: string, value: T): void {
+  getDatabase()
+    .prepare(
+      `
+      INSERT INTO app_settings (key, value_json, updated_at)
+      VALUES (?, ?, ?)
+      ON CONFLICT(key) DO UPDATE SET
+        value_json = excluded.value_json,
+        updated_at = excluded.updated_at
+    `
+    )
+    .run(key, JSON.stringify(value), new Date().toISOString())
+}
+
 export function closeDatabase(): void {
   database?.close()
   database = undefined

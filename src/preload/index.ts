@@ -9,6 +9,19 @@ const api = {
     close: (): Promise<void> => ipcRenderer.invoke('window:close'),
     setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode)
   },
+  pet: {
+    onSay: (listener: (message: string) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, message: string): void =>
+        listener(message)
+      ipcRenderer.on('pet:say', handler)
+      return () => ipcRenderer.removeListener('pet:say', handler)
+    },
+    onOpenRoom: (listener: () => void): (() => void) => {
+      const handler = (): void => listener()
+      ipcRenderer.on('app:open-room', handler)
+      return () => ipcRenderer.removeListener('app:open-room', handler)
+    }
+  },
   character: {
     getDefault: (): Promise<unknown> => ipcRenderer.invoke('character:get-default')
   },

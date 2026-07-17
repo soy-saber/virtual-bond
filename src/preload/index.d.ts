@@ -7,6 +7,10 @@ interface VirtualBondAPI {
     close: () => Promise<void>
     setMode: (mode: 'pet' | 'room') => Promise<void>
   }
+  pet: {
+    onSay: (listener: (message: string) => void) => () => void
+    onOpenRoom: (listener: () => void) => () => void
+  }
   character: {
     getDefault: () => Promise<CharacterRecord>
   }
