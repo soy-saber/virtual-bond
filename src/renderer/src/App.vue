@@ -1,71 +1,93 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 
-type Message = { id: number; role: 'companion' | 'user'; content: string; time: string }
-
-const companion = {
-  name: '澄夏',
-  status: '正在窗边听雨',
-  relationship: '相识的第 12 天',
-  mood: '安静而亲近'
+type Message = {
+  id: string
+  characterId: string
+  role: 'companion' | 'user'
+  content: string
+  createdAt: string
 }
 
-const messages = ref<Message[]>([
-  {
-    id: 1,
-    role: 'companion',
-    content: '你回来啦。今天外面下了很久的雨，我给你留了一小块安静的时间。',
-    time: '19:24'
-  },
-  {
-    id: 2,
-    role: 'user',
-    content: '听起来正是我需要的。',
-    time: '19:25'
-  },
-  {
-    id: 3,
-    role: 'companion',
-    content: '那就先不用急着解释什么。我们可以听一会儿雨，或者你愿意的话，告诉我今天最累的那一刻。',
-    time: '19:25'
-  }
-])
+const companion = ref({
+  id: '',
+  name: '澄夏',
+  status: '正在窗边听雨',
+  mood: '安静而亲近',
+  relationshipStartedAt: new Date().toISOString(),
+  bondLevel: 1,
+  bondExperience: 0
+})
+
+const messages = ref<Message[]>([])
 const draft = ref('')
 const chatList = ref<HTMLElement>()
 const isThinking = ref(false)
+const isLoading = ref(true)
+const loadError = ref('')
 const canSend = computed(() => draft.value.trim().length > 0 && !isThinking.value)
+const relationship = computed(() => {
+  const elapsed = Date.now() - new Date(companion.value.relationshipStartedAt).getTime()
+  const days = Math.max(1, Math.floor(elapsed / 86_400_000) + 1)
+  return `相识的第 ${days} 天`
+})
+const bondProgress = computed(() => `${Math.min(companion.value.bondExperience, 100)}%`)
 const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
 const closeWindow = (): Promise<void> => window.api.window.close()
 
-const now = (): string =>
+const formatTime = (value: string): string =>
   new Intl.DateTimeFormat('zh-CN', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false
-  }).format(new Date())
+  }).format(new Date(value))
+
+async function scrollToLatest(behavior: 'auto' | 'smooth' = 'smooth'): Promise<void> {
+  await nextTick()
+  chatList.value?.scrollTo({ top: chatList.value.scrollHeight, behavior })
+}
+
+onMounted(async () => {
+  try {
+    companion.value = await window.api.character.getDefault()
+    messages.value = await window.api.conversation.list(companion.value.id)
+    await scrollToLatest('auto')
+  } catch (error) {
+    loadError.value = error instanceof Error ? error.message : '无法加载陪伴空间'
+  } finally {
+    isLoading.value = false
+  }
+})
 
 async function sendMessage(): Promise<void> {
   const content = draft.value.trim()
-  if (!content || isThinking.value) return
-  messages.value.push({ id: Date.now(), role: 'user', content, time: now() })
+  if (!content || isThinking.value || !companion.value.id) return
+  const optimisticId = `pending-${Date.now()}`
+  messages.value.push({
+    id: optimisticId,
+    characterId: companion.value.id,
+    role: 'user',
+    content,
+    createdAt: new Date().toISOString()
+  })
   draft.value = ''
   isThinking.value = true
-  await nextTick()
-  chatList.value?.scrollTo({ top: chatList.value.scrollHeight, behavior: 'smooth' })
+  await scrollToLatest()
 
-  window.setTimeout(async () => {
-    messages.value.push({
-      id: Date.now() + 1,
-      role: 'companion',
-      content:
-        '我听见了。现在这里还只是我们的第一间小屋，但我会慢慢记住你在意的事，也会保留自己的想法。',
-      time: now()
-    })
+  try {
+    const result = await window.api.conversation.send(companion.value.id, content)
+    const optimisticIndex = messages.value.findIndex((message) => message.id === optimisticId)
+    if (optimisticIndex >= 0) messages.value.splice(optimisticIndex, 1, result.userMessage)
+    messages.value.push(result.companionMessage)
+  } catch (error) {
+    const optimistic = messages.value.find((message) => message.id === optimisticId)
+    if (optimistic) optimistic.content = `${optimistic.content}（发送失败，请重试）`
+    console.error(error)
+  } finally {
     isThinking.value = false
-    await nextTick()
-    chatList.value?.scrollTo({ top: chatList.value.scrollHeight, behavior: 'smooth' })
-  }, 700)
+    await scrollToLatest()
+  }
 }
 </script>
 
@@ -91,9 +113,11 @@ async function sendMessage(): Promise<void> {
           </div>
           <h1>{{ companion.name }}</h1>
           <p>{{ companion.status }}</p>
-          <div class="bond"><span>纽带</span><strong>Lv. 3</strong></div>
-          <div class="bond-track"><i></i></div>
-          <small>{{ companion.relationship }}</small>
+          <div class="bond">
+            <span>纽带</span><strong>Lv. {{ companion.bondLevel }}</strong>
+          </div>
+          <div class="bond-track"><i :style="{ width: bondProgress }"></i></div>
+          <small>{{ relationship }}</small>
         </div>
 
         <nav class="main-nav">
@@ -134,9 +158,11 @@ async function sendMessage(): Promise<void> {
           <button aria-label="更多">•••</button>
         </header>
         <div ref="chatList" class="messages">
+          <div v-if="isLoading" class="empty-state">正在打开这间小屋……</div>
+          <div v-else-if="loadError" class="empty-state error">{{ loadError }}</div>
           <article v-for="message in messages" :key="message.id" :class="['message', message.role]">
             <div class="bubble">{{ message.content }}</div>
-            <time>{{ message.time }}</time>
+            <time>{{ formatTime(message.createdAt) }}</time>
           </article>
           <article v-if="isThinking" class="message companion">
             <div class="bubble typing"><i></i><i></i><i></i></div>

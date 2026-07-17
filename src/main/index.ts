@@ -2,6 +2,8 @@ import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { closeDatabase, initializeDatabase } from './database'
+import { registerApplicationIpc } from './ipc'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
@@ -43,6 +45,8 @@ function createWindow(): void {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
+  initializeDatabase()
+  registerApplicationIpc()
   electronApp.setAppUserModelId('com.soysaber.virtualbond')
 
   // Default open or close DevTools by F12 in development
@@ -82,6 +86,8 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+app.on('before-quit', () => closeDatabase())
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.

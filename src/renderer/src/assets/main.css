@@ -360,6 +360,15 @@ button {
   scrollbar-width: thin;
   scrollbar-color: #343044 transparent;
 }
+.empty-state {
+  padding: 28px 10px;
+  color: #777283;
+  font-size: 11px;
+  text-align: center;
+}
+.empty-state.error {
+  color: #d68b98;
+}
 .message {
   display: flex;
   flex-wrap: wrap;

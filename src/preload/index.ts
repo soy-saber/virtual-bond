@@ -7,6 +7,15 @@ const api = {
     minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggle-maximize'),
     close: (): Promise<void> => ipcRenderer.invoke('window:close')
+  },
+  character: {
+    getDefault: (): Promise<unknown> => ipcRenderer.invoke('character:get-default')
+  },
+  conversation: {
+    list: (characterId: string): Promise<unknown> =>
+      ipcRenderer.invoke('conversation:list', characterId),
+    send: (characterId: string, content: string): Promise<unknown> =>
+      ipcRenderer.invoke('conversation:send', characterId, content)
   }
 }
 
