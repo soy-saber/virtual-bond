@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref } from 'vue'
+import PetView from './PetView.vue'
 
 type Message = {
   id: string
@@ -25,6 +26,7 @@ const chatList = ref<HTMLElement>()
 const isThinking = ref(false)
 const isLoading = ref(true)
 const loadError = ref('')
+const isRoomOpen = ref(false)
 const canSend = computed(() => draft.value.trim().length > 0 && !isThinking.value)
 const relationship = computed(() => {
   const elapsed = Date.now() - new Date(companion.value.relationshipStartedAt).getTime()
@@ -35,6 +37,14 @@ const bondProgress = computed(() => `${Math.min(companion.value.bondExperience, 
 const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
 const closeWindow = (): Promise<void> => window.api.window.close()
+const openRoom = async (): Promise<void> => {
+  await window.api.window.setMode('room')
+  isRoomOpen.value = true
+}
+const closeRoom = async (): Promise<void> => {
+  isRoomOpen.value = false
+  await window.api.window.setMode('pet')
+}
 
 const formatTime = (value: string): string =>
   new Intl.DateTimeFormat('zh-CN', {
@@ -92,11 +102,14 @@ async function sendMessage(): Promise<void> {
 </script>
 
 <template>
-  <main class="app-shell">
+  <PetView v-if="!isRoomOpen" :name="companion.name" :mood="companion.mood" @open-room="openRoom" />
+
+  <main v-else class="app-shell room-shell">
     <header class="titlebar">
       <div class="brand"><span class="brand-mark">VB</span><span>虚拟纽带</span></div>
       <div class="drag-region"></div>
       <nav class="window-actions" aria-label="窗口控制">
+        <button aria-label="返回桌宠" @click="closeRoom">↙</button>
         <button aria-label="最小化" @click="minimizeWindow">—</button>
         <button aria-label="最大化" @click="toggleMaximizeWindow">□</button>
         <button class="close" aria-label="关闭" @click="closeWindow">×</button>

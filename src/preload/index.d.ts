@@ -5,6 +5,7 @@ interface VirtualBondAPI {
     minimize: () => Promise<void>
     toggleMaximize: () => Promise<boolean>
     close: () => Promise<void>
+    setMode: (mode: 'pet' | 'room') => Promise<void>
   }
   character: {
     getDefault: () => Promise<CharacterRecord>

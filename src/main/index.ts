@@ -7,14 +7,18 @@ import { registerApplicationIpc } from './ipc'
 
 function createWindow(): void {
   const mainWindow = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 920,
-    minHeight: 640,
+    width: 360,
+    height: 440,
+    minWidth: 320,
+    minHeight: 360,
     show: false,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    hasShadow: false,
+    resizable: false,
     autoHideMenuBar: true,
     ...(process.platform === 'linux' ? { icon } : {}),
     webPreferences: {
@@ -64,6 +68,20 @@ app.whenReady().then(() => {
     if (!window) return false
     window.isMaximized() ? window.unmaximize() : window.maximize()
     return window.isMaximized()
+  })
+  ipcMain.handle('window:set-mode', (event, mode: 'pet' | 'room') => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return
+    if (mode === 'room') {
+      window.setResizable(true)
+      window.setSkipTaskbar(false)
+      window.setSize(1180, 760, true)
+      window.center()
+    } else {
+      window.setResizable(false)
+      window.setSkipTaskbar(true)
+      window.setSize(360, 440, true)
+    }
   })
   ipcMain.handle('window:close', (event) => {
     BrowserWindow.fromWebContents(event.sender)?.close()

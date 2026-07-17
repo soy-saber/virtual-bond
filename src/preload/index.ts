@@ -6,7 +6,8 @@ const api = {
   window: {
     minimize: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
     toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggle-maximize'),
-    close: (): Promise<void> => ipcRenderer.invoke('window:close')
+    close: (): Promise<void> => ipcRenderer.invoke('window:close'),
+    setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode)
   },
   character: {
     getDefault: (): Promise<unknown> => ipcRenderer.invoke('character:get-default')
