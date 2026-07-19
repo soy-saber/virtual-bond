@@ -27,6 +27,11 @@ const api = {
       const handler = (): void => listener()
       ipcRenderer.on('app:open-room', handler)
       return () => ipcRenderer.removeListener('app:open-room', handler)
+    },
+    onReturnToPet: (listener: () => void): (() => void) => {
+      const handler = (): void => listener()
+      ipcRenderer.on('app:return-to-pet', handler)
+      return () => ipcRenderer.removeListener('app:return-to-pet', handler)
     }
   },
   skins: {

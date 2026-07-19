@@ -56,7 +56,7 @@ button {
 .pet-aura {
   position: absolute;
   left: 50%;
-  top: 150px;
+  top: 132px;
   width: 220px;
   height: 220px;
   border-radius: 50%;
@@ -74,7 +74,7 @@ button {
   position: absolute;
   z-index: 2;
   left: 50%;
-  top: 158px;
+  top: 140px;
   width: 152px;
   height: 210px;
   transform: translateX(-50%);
@@ -217,7 +217,7 @@ button {
   position: absolute;
   z-index: 1;
   left: 50%;
-  bottom: 62px;
+  bottom: 72px;
   width: 130px;
   height: 22px;
   border-radius: 50%;
@@ -230,7 +230,7 @@ button {
   position: absolute;
   z-index: 8;
   left: 50%;
-  bottom: 28px;
+  bottom: 12px;
   display: flex;
   align-items: center;
   gap: 8px;

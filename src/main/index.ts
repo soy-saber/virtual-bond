@@ -103,6 +103,12 @@ function requestRoomOpen(): void {
   mainWindow?.webContents.send('app:open-room')
 }
 
+function returnToPet(window: BrowserWindow): void {
+  setWindowMode(window, 'pet')
+  window.webContents.send('app:return-to-pet')
+  showWindow()
+}
+
 function sendPetGreeting(): void {
   showWindow()
   mainWindow?.webContents.send('pet:say', '我在。刚刚好像听见你叫我了。')
@@ -214,7 +220,8 @@ function createWindow(): BrowserWindow {
   window.on('close', (event) => {
     if (isQuitting) return
     event.preventDefault()
-    window.hide()
+    if (currentMode === 'room') returnToPet(window)
+    else window.hide()
   })
   window.webContents.on('context-menu', () => createContextMenu().popup({ window }))
   window.webContents.setWindowOpenHandler((details) => {
@@ -280,7 +287,12 @@ app.whenReady().then(() => {
     const window = BrowserWindow.fromWebContents(event.sender)
     return window ? setPetScale(window, value) : petScale
   })
-  ipcMain.handle('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.hide())
+  ipcMain.handle('window:close', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window) return
+    if (currentMode === 'room') returnToPet(window)
+    else window.hide()
+  })
   ipcMain.on('window:show-context-menu', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (window) createContextMenu().popup({ window })

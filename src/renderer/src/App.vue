@@ -61,6 +61,7 @@ const closeRoom = async (): Promise<void> => {
   await window.api.window.setMode('pet')
 }
 let removeOpenRoomListener: (() => void) | undefined
+let removeReturnToPetListener: (() => void) | undefined
 let removeDeltaListener: (() => void) | undefined
 
 const providerStatus = computed(() => {
@@ -82,6 +83,10 @@ async function scrollToLatest(behavior: 'auto' | 'smooth' = 'smooth'): Promise<v
 
 onMounted(async () => {
   removeOpenRoomListener = window.api.pet.onOpenRoom(() => void openRoom())
+  removeReturnToPetListener = window.api.pet.onReturnToPet(() => {
+    isSettingsOpen.value = false
+    isRoomOpen.value = false
+  })
   removeDeltaListener = window.api.conversation.onDelta(({ requestId, delta }) => {
     if (requestId !== currentRequestId.value) return
     const streamingMessage = messages.value.find(
@@ -108,6 +113,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   removeOpenRoomListener?.()
+  removeReturnToPetListener?.()
   removeDeltaListener?.()
 })
 

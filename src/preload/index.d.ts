@@ -16,6 +16,7 @@ interface VirtualBondAPI {
   pet: {
     onSay: (listener: (message: string) => void) => () => void
     onOpenRoom: (listener: () => void) => () => void
+    onReturnToPet: (listener: () => void) => () => void
   }
   skins: {
     list: () => Promise<SkinScanView>
