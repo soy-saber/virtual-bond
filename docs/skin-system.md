@@ -61,6 +61,8 @@ skins/
 - PixiJS 按规则网格动态切分纹理，支持任意动作名、FPS、循环和 `next` 后继动作。
 - 交互动作缺失或加载失败时回退 `idle`；`idle` 也不可用时继续显示原有 CSS 桌宠。
 - 自动化测试覆盖合法清单、缺失 `idle`、路径越界、用户覆盖、PNG 头和 Sheet 尺寸。
+- 仓库包含首套 `reference-companion` 开发皮肤，可直接验证 PixiJS 播放和 CSS 降级切换。
+- AI 生成帧会在透明化后按角色包围盒统一水平中心与脚底坐标，避免锚点漂移被误认为行走。
 
 尚未完成：
 
@@ -82,6 +84,10 @@ skins/
 - 生成后必须执行的尺寸、透明度、帧数和锚点校验。
 
 图片生成结果不能直接视为可信资源。后续播放器和皮肤工具仍需读取实际 PNG 尺寸并校验 Sheet 布局。
+
+首套参考图测试皮肤先使用 [`resources/prompts/reference-neutral-character.zh-CN.md`](../resources/prompts/reference-neutral-character.zh-CN.md) 生成正常站立的标准角色参考，再使用 [`resources/prompts/reference-idle-sprite-sheet.zh-CN.md`](../resources/prompts/reference-idle-sprite-sheet.zh-CN.md) 验证动作模板。正式待机从单一角色参考生成，锁定下半身并只对上半身施加微幅呼吸形变，输出为 `4 × 2`、每帧 `1024 × 1024` 的透明 Sheet。
+
+标准制作流程为：1K 动作模板验收 → 最高 4K 的高分辨率主素材 → 锚点与非动作区域约束 → 1024/512/256 多档运行时导出。完整流程与当前 Provider 限制见 [`image-generation.md`](image-generation.md)。
 
 示例：
 
