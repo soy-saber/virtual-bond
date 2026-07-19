@@ -8,6 +8,9 @@ const api = {
     toggleMaximize: (): Promise<boolean> => ipcRenderer.invoke('window:toggle-maximize'),
     close: (): Promise<void> => ipcRenderer.invoke('window:close'),
     setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode),
+    getPetScale: (): Promise<number> => ipcRenderer.invoke('window:get-pet-scale'),
+    setPetScale: (scale: number): Promise<number> =>
+      ipcRenderer.invoke('window:set-pet-scale', scale),
     showContextMenu: (): void => ipcRenderer.send('window:show-context-menu'),
     beginDrag: (): void => ipcRenderer.send('window:drag-start'),
     dragTo: (): void => ipcRenderer.send('window:drag-move'),

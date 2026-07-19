@@ -22,6 +22,7 @@ const notice = ref('')
 const error = ref('')
 const apiKey = ref('')
 const importText = ref('')
+const petScale = ref(0.75)
 const current = ref<ProviderSettingsView>()
 const form = reactive({
   provider: 'openai' as ProviderKind,
@@ -80,11 +81,26 @@ function applyProviderDefaults(): void {
 async function loadSettings(): Promise<void> {
   clearMessages()
   try {
-    applySettings(await window.api.settings.get())
+    const [settings, scale] = await Promise.all([
+      window.api.settings.get(),
+      window.api.window.getPetScale()
+    ])
+    applySettings(settings)
+    petScale.value = scale
   } catch (loadError) {
     error.value = loadError instanceof Error ? loadError.message : '无法读取设置'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function updatePetScale(): Promise<void> {
+  clearMessages()
+  try {
+    petScale.value = await window.api.window.setPetScale(petScale.value)
+    notice.value = `桌宠尺寸已调整为 ${Math.round(petScale.value * 100)}%`
+  } catch (scaleError) {
+    error.value = scaleError instanceof Error ? scaleError.message : '调整桌宠尺寸失败'
   }
 }
 
@@ -184,6 +200,26 @@ onMounted(loadSettings)
 
       <div v-if="isLoading" class="settings-loading">正在读取安全设置……</div>
       <div v-else class="settings-content">
+        <section class="pet-display-settings">
+          <div class="setting-title-row">
+            <div>
+              <span class="eyebrow">PET DISPLAY</span>
+              <h3>桌宠尺寸</h3>
+            </div>
+            <strong>{{ Math.round(petScale * 100) }}%</strong>
+          </div>
+          <input
+            v-model.number="petScale"
+            type="range"
+            min="0.45"
+            max="1.2"
+            step="0.05"
+            aria-label="桌宠显示比例"
+            @change="updatePetScale"
+          />
+          <small>窗口、角色、气泡和点击区域会保持同一比例，重启后继续生效。</small>
+        </section>
+
         <div class="settings-grid">
           <label>
             <span>Provider</span>

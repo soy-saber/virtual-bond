@@ -17,9 +17,13 @@ import { registerApplicationIpc } from './ipc'
 
 type WindowMode = 'pet' | 'room'
 
-const PET_SIZE = { width: 360, height: 440 }
+const PET_BASE_SIZE = { width: 360, height: 440 }
 const ROOM_SIZE = { width: 1180, height: 760 }
 const POSITION_SETTING = 'window.petBounds'
+const SCALE_SETTING = 'window.petScale'
+const DEFAULT_PET_SCALE = 0.75
+const MIN_PET_SCALE = 0.45
+const MAX_PET_SCALE = 1.2
 
 let mainWindow: BrowserWindow | undefined
 let tray: Tray | undefined
@@ -27,14 +31,28 @@ let currentMode: WindowMode = 'pet'
 let isQuitting = false
 let savePositionTimer: NodeJS.Timeout | undefined
 let petBounds: Rectangle | undefined
+let petScale = DEFAULT_PET_SCALE
 let dragOrigin: { mouseX: number; mouseY: number; windowX: number; windowY: number } | undefined
+
+function normalizePetScale(value: unknown): number {
+  const numeric = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_PET_SCALE
+  return Math.round(Math.min(MAX_PET_SCALE, Math.max(MIN_PET_SCALE, numeric)) * 20) / 20
+}
+
+function getPetSize(): Pick<Rectangle, 'width' | 'height'> {
+  return {
+    width: Math.round(PET_BASE_SIZE.width * petScale),
+    height: Math.round(PET_BASE_SIZE.height * petScale)
+  }
+}
 
 function defaultPetBounds(): Rectangle {
   const workArea = screen.getPrimaryDisplay().workArea
+  const size = getPetSize()
   return {
-    x: workArea.x + workArea.width - PET_SIZE.width - 32,
-    y: workArea.y + workArea.height - PET_SIZE.height - 24,
-    ...PET_SIZE
+    x: workArea.x + workArea.width - size.width - 32,
+    y: workArea.y + workArea.height - size.height - 24,
+    ...size
   }
 }
 
@@ -53,13 +71,13 @@ function isVisibleOnAnyDisplay(bounds: Rectangle): boolean {
 function restorePetBounds(): Rectangle {
   const stored = getSetting<Rectangle | null>(POSITION_SETTING, null)
   if (!stored) return defaultPetBounds()
-  const normalized = { ...stored, ...PET_SIZE }
+  const normalized = { ...stored, ...getPetSize() }
   return isVisibleOnAnyDisplay(normalized) ? normalized : defaultPetBounds()
 }
 
 function persistPetBounds(): void {
   if (!mainWindow || mainWindow.isDestroyed() || currentMode !== 'pet') return
-  petBounds = { ...mainWindow.getBounds(), ...PET_SIZE }
+  petBounds = { ...mainWindow.getBounds(), ...getPetSize() }
   setSetting(POSITION_SETTING, petBounds)
 }
 
@@ -96,6 +114,7 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   if (mode === 'room') {
     persistPetBounds()
     currentMode = 'room'
+    window.webContents.setZoomFactor(1)
     window.setResizable(true)
     window.setSkipTaskbar(false)
     window.setMinimumSize(920, 640)
@@ -106,13 +125,38 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   }
 
   currentMode = 'pet'
+  const size = getPetSize()
   window.unmaximize()
-  window.setMinimumSize(PET_SIZE.width, PET_SIZE.height)
-  window.setMaximumSize(PET_SIZE.width, PET_SIZE.height)
+  window.webContents.setZoomFactor(petScale)
+  window.setMinimumSize(size.width, size.height)
+  window.setMaximumSize(size.width, size.height)
   window.setResizable(false)
   window.setSkipTaskbar(true)
   window.setBounds(petBounds ?? restorePetBounds(), true)
   window.setAlwaysOnTop(true)
+}
+
+function setPetScale(window: BrowserWindow, value: unknown): number {
+  const nextScale = normalizePetScale(value)
+  if (nextScale === petScale) return petScale
+
+  const previous = petBounds ?? restorePetBounds()
+  petScale = nextScale
+  setSetting(SCALE_SETTING, petScale)
+  const size = getPetSize()
+  petBounds = {
+    x: Math.round(previous.x + (previous.width - size.width) / 2),
+    y: Math.round(previous.y + previous.height - size.height),
+    ...size
+  }
+  if (currentMode === 'pet') {
+    window.webContents.setZoomFactor(petScale)
+    window.setMinimumSize(size.width, size.height)
+    window.setMaximumSize(size.width, size.height)
+    window.setBounds(petBounds, true)
+  }
+  setSetting(POSITION_SETTING, petBounds)
+  return petScale
 }
 
 function createContextMenu(): Menu {
@@ -142,10 +186,10 @@ function createWindow(): BrowserWindow {
   petBounds = restorePetBounds()
   const window = new BrowserWindow({
     ...petBounds,
-    minWidth: PET_SIZE.width,
-    minHeight: PET_SIZE.height,
-    maxWidth: PET_SIZE.width,
-    maxHeight: PET_SIZE.height,
+    minWidth: petBounds.width,
+    minHeight: petBounds.height,
+    maxWidth: petBounds.width,
+    maxHeight: petBounds.height,
     show: false,
     frame: false,
     transparent: true,
@@ -163,6 +207,7 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false
     }
   })
+  window.webContents.setZoomFactor(petScale)
 
   window.on('ready-to-show', () => window.show())
   window.on('move', schedulePetBoundsSave)
@@ -211,6 +256,7 @@ if (!hasSingleInstanceLock) app.quit()
 app.whenReady().then(() => {
   if (!hasSingleInstanceLock) return
   initializeDatabase()
+  petScale = normalizePetScale(getSetting(SCALE_SETTING, DEFAULT_PET_SCALE))
   registerApplicationIpc()
   electronApp.setAppUserModelId('com.soysaber.virtualbond')
 
@@ -228,6 +274,11 @@ app.whenReady().then(() => {
   ipcMain.handle('window:set-mode', (event, mode: WindowMode) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (window) setWindowMode(window, mode)
+  })
+  ipcMain.handle('window:get-pet-scale', () => petScale)
+  ipcMain.handle('window:set-pet-scale', (event, value: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    return window ? setPetScale(window, value) : petScale
   })
   ipcMain.handle('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.hide())
   ipcMain.on('window:show-context-menu', (event) => {
@@ -248,7 +299,7 @@ app.whenReady().then(() => {
     window.setBounds({
       x: Math.round(dragOrigin.windowX + cursor.x - dragOrigin.mouseX),
       y: Math.round(dragOrigin.windowY + cursor.y - dragOrigin.mouseY),
-      ...PET_SIZE
+      ...getPetSize()
     })
   })
   ipcMain.on('window:drag-end', () => {

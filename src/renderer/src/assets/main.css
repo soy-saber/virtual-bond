@@ -939,6 +939,35 @@ button {
   font-size: 9px;
   line-height: 1.6;
 }
+.pet-display-settings {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(214, 199, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(38, 32, 61, 0.42);
+}
+.setting-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.setting-title-row h3 {
+  margin: 2px 0 0;
+  font-size: 15px;
+}
+.setting-title-row strong {
+  color: #d5c2ff;
+  font-size: 14px;
+}
+.pet-display-settings input[type='range'] {
+  width: 100%;
+  accent-color: #a98bdc;
+}
+.pet-display-settings small {
+  color: #9890ad;
+  font-size: 11px;
+}
 .secret-status {
   display: flex;
   align-items: center;

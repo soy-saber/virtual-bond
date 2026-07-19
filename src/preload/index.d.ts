@@ -6,6 +6,8 @@ interface VirtualBondAPI {
     toggleMaximize: () => Promise<boolean>
     close: () => Promise<void>
     setMode: (mode: 'pet' | 'room') => Promise<void>
+    getPetScale: () => Promise<number>
+    setPetScale: (scale: number) => Promise<number>
     showContextMenu: () => void
     beginDrag: () => void
     dragTo: () => void
