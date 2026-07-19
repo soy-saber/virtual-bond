@@ -77,6 +77,8 @@ src/
 
 在另一台电脑接续开发时，先阅读 [`docs/development-status.md`](docs/development-status.md)。该文件随每次推送更新，记录最新提交、验证结果、本机状态边界和下一步入口。
 
+涉及窗口和角色布局的改动，实机验收至少覆盖普通窗口、最大化、连续拖动调整尺寸以及返回桌宠四种状态。
+
 ```bash
 npm ci
 npm run dev

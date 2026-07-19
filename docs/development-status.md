@@ -13,10 +13,12 @@
 - 分支：`main`
 - 高清待机与渲染：`7cad11b feat: refine high-resolution idle rendering`
 - 命中范围与气泡：`8df6759 fix: align pet hit regions and speech bubbles`
-- 推送前验证：`npm run check` 全部通过，包括 TypeScript、10/10 测试、ESLint 和 Electron 生产构建。
+- 皮肤管理闭环：`5b3f6ee feat: add persistent skin management`
+- 陪伴空间响应式布局：`11a3922 fix: anchor room layout to the visible stage`
+- 推送前验证：`npm run check` 全部通过，包括 TypeScript、12/12 测试、ESLint 和 Electron 生产构建。
 - 补充检查：`git diff --check` 通过；staged diff 未发现 API Key 或桌面 Key 文件路径。
 
-新电脑检出后可运行 `git log -3 --oneline` 对照本节。若远端出现更新，以文件顶部日期和 `main` 最新提交为准。
+新电脑检出后可运行 `git log -5 --oneline` 对照本节。若远端出现更新，以文件顶部日期和 `main` 最新提交为准。
 
 ## 本次进度
 
