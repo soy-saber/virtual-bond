@@ -99,6 +99,7 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
     window.setResizable(true)
     window.setSkipTaskbar(false)
     window.setMinimumSize(920, 640)
+    window.setMaximumSize(10_000, 10_000)
     window.setSize(ROOM_SIZE.width, ROOM_SIZE.height, true)
     window.center()
     return
@@ -106,7 +107,8 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
 
   currentMode = 'pet'
   window.unmaximize()
-  window.setMinimumSize(320, 360)
+  window.setMinimumSize(PET_SIZE.width, PET_SIZE.height)
+  window.setMaximumSize(PET_SIZE.width, PET_SIZE.height)
   window.setResizable(false)
   window.setSkipTaskbar(true)
   window.setBounds(petBounds ?? restorePetBounds(), true)
@@ -140,8 +142,10 @@ function createWindow(): BrowserWindow {
   petBounds = restorePetBounds()
   const window = new BrowserWindow({
     ...petBounds,
-    minWidth: 320,
-    minHeight: 360,
+    minWidth: PET_SIZE.width,
+    minHeight: PET_SIZE.height,
+    maxWidth: PET_SIZE.width,
+    maxHeight: PET_SIZE.height,
     show: false,
     frame: false,
     transparent: true,
@@ -230,19 +234,22 @@ app.whenReady().then(() => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (window) createContextMenu().popup({ window })
   })
-  ipcMain.on('window:drag-start', (event, mouseX: number, mouseY: number) => {
+  ipcMain.on('window:drag-start', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window || currentMode !== 'pet') return
     const [windowX, windowY] = window.getPosition()
-    dragOrigin = { mouseX, mouseY, windowX, windowY }
+    const cursor = screen.getCursorScreenPoint()
+    dragOrigin = { mouseX: cursor.x, mouseY: cursor.y, windowX, windowY }
   })
-  ipcMain.on('window:drag-move', (event, mouseX: number, mouseY: number) => {
+  ipcMain.on('window:drag-move', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window || !dragOrigin || currentMode !== 'pet') return
-    window.setPosition(
-      Math.round(dragOrigin.windowX + mouseX - dragOrigin.mouseX),
-      Math.round(dragOrigin.windowY + mouseY - dragOrigin.mouseY)
-    )
+    const cursor = screen.getCursorScreenPoint()
+    window.setBounds({
+      x: Math.round(dragOrigin.windowX + cursor.x - dragOrigin.mouseX),
+      y: Math.round(dragOrigin.windowY + cursor.y - dragOrigin.mouseY),
+      ...PET_SIZE
+    })
   })
   ipcMain.on('window:drag-end', () => {
     dragOrigin = undefined

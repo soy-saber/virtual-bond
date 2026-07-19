@@ -329,3 +329,30 @@ CCSwitch 当前 Codex 配置可由 Codex CLI 正常调用，但 Virtual Bond 使
 ### 2026-07-19 实机结果
 
 通过 `custom` Provider 调用 DeepSeek 的 OpenAI-compatible Chat Completions 流式接口，验证了安全存储、真实网络请求、流式增量和 SQLite 状态更新。结果为 4 个文本增量，回复非空，最终消息状态为 `completed`。
+
+## 17. Windows 显示缩放导致桌宠拖动反馈和尺寸漂移
+
+### 现象
+
+连续拖动桌宠后，透明窗口的可拖动区域看起来越来越大，桌宠与底部按钮的距离也随之增加。
+
+### 原因与解决方案
+
+- 渲染层 PointerEvent 的 `screenX/screenY` 与 Electron 原生窗口位置在 Windows DPI 缩放下可能使用不同坐标尺度，持续移动会产生反馈偏差。
+- 拖动坐标改为由主进程通过 `screen.getCursorScreenPoint()` 统一读取。
+- 桌宠模式的最小尺寸和最大尺寸都锁定为 `360 × 440`，每次移动也显式保持该尺寸。
+- 进入房间模式时恢复可调整尺寸和房间窗口上限。
+
+## 18. 本地普通对话误用 CCSwitch Codex 中转
+
+### 现象
+
+真实对话返回 `400 invalid codex request`，说明应用仍在使用此前自动导入的 Codex Responses 配置。
+
+### 解决方案
+
+- 当本机桌面存在 `key/key.txt`，且当前配置仍是默认配置、本地 DeepSeek 配置或自动导入的 CCSwitch Codex 配置时，普通聊天自动切换为 DeepSeek 直连。
+- 使用 `https://api.deepseek.com/v1`、`deepseek-chat` 和自定义 Chat Completions 流式协议。
+- Key 读取后通过 Electron `safeStorage` 保存，不进入源码和 Git。
+- 用户手动保存的其他 Provider 不会被该本地默认规则覆盖。
+- Agent 工具调用不复用普通聊天 Provider，后续通过 OpenCode CLI 单独实现。

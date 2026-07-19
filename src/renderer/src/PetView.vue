@@ -42,12 +42,12 @@ function startDrag(event: PointerEvent): void {
   if (event.button !== 0) return
   isDragging.value = true
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-  window.api.window.beginDrag(event.screenX, event.screenY)
+  window.api.window.beginDrag()
 }
 
-function moveDrag(event: PointerEvent): void {
+function moveDrag(): void {
   if (!isDragging.value) return
-  window.api.window.dragTo(event.screenX, event.screenY)
+  window.api.window.dragTo()
 }
 
 function endDrag(event: PointerEvent): void {

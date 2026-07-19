@@ -7,8 +7,8 @@ interface VirtualBondAPI {
     close: () => Promise<void>
     setMode: (mode: 'pet' | 'room') => Promise<void>
     showContextMenu: () => void
-    beginDrag: (screenX: number, screenY: number) => void
-    dragTo: (screenX: number, screenY: number) => void
+    beginDrag: () => void
+    dragTo: () => void
     endDrag: () => void
   }
   pet: {

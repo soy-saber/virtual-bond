@@ -30,6 +30,7 @@ export interface ProviderRuntimeSettings extends StoredProviderSettings {
 
 const SETTINGS_KEY = 'chat.provider.settings'
 const SECRET_KEY = 'chat.provider.secret'
+const LOCAL_DEEPSEEK_SOURCE = 'local-deepseek-key'
 
 function now(): string {
   return new Date().toISOString()
@@ -135,6 +136,32 @@ function loadStoredSettings(): StoredProviderSettings {
 
 function saveStoredSettings(settings: StoredProviderSettings): void {
   setSetting(SETTINGS_KEY, settings)
+}
+
+function applyLocalDeepSeekDefault(settings: StoredProviderSettings): StoredProviderSettings {
+  const canReplace =
+    settings.source === 'default' ||
+    settings.source === LOCAL_DEEPSEEK_SOURCE ||
+    settings.source.startsWith('ccswitch-db:codex')
+  if (!canReplace) return settings
+
+  const keyPath = join(app.getPath('desktop'), 'key', 'key.txt')
+  if (!existsSync(keyPath)) return settings
+  const apiKey = readFileSync(keyPath, 'utf8').trim()
+  if (!apiKey) return settings
+
+  const next: StoredProviderSettings = {
+    provider: 'custom',
+    name: 'DeepSeek 本地直连',
+    baseUrl: 'https://api.deepseek.com/v1',
+    model: 'deepseek-chat',
+    systemPrompt: settings.systemPrompt,
+    source: LOCAL_DEEPSEEK_SOURCE,
+    updatedAt: now()
+  }
+  saveStoredSettings(next)
+  saveStoredSecret(apiKey)
+  return next
 }
 
 function buildView(settings: StoredProviderSettings, secret: string): ProviderSettingsView {
@@ -384,7 +411,7 @@ function applyImportedSettings(
 }
 
 export function getProviderSettings(): ProviderSettingsView {
-  const stored = loadStoredSettings()
+  const stored = applyLocalDeepSeekDefault(loadStoredSettings())
   const secret = loadStoredSecret()
   return buildView(stored, secret)
 }
@@ -542,7 +569,7 @@ export function importProviderSettingsFromCcswitch(
 export function getProviderRuntimeSettings(options?: {
   autoImportCcswitch?: boolean
 }): ProviderRuntimeSettings {
-  let settings = loadStoredSettings()
+  let settings = applyLocalDeepSeekDefault(loadStoredSettings())
   let apiKey = loadStoredSecret()
 
   if (!apiKey && options?.autoImportCcswitch) {

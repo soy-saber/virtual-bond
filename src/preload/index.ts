@@ -9,10 +9,8 @@ const api = {
     close: (): Promise<void> => ipcRenderer.invoke('window:close'),
     setMode: (mode: 'pet' | 'room'): Promise<void> => ipcRenderer.invoke('window:set-mode', mode),
     showContextMenu: (): void => ipcRenderer.send('window:show-context-menu'),
-    beginDrag: (screenX: number, screenY: number): void =>
-      ipcRenderer.send('window:drag-start', screenX, screenY),
-    dragTo: (screenX: number, screenY: number): void =>
-      ipcRenderer.send('window:drag-move', screenX, screenY),
+    beginDrag: (): void => ipcRenderer.send('window:drag-start'),
+    dragTo: (): void => ipcRenderer.send('window:drag-move'),
     endDrag: (): void => ipcRenderer.send('window:drag-end')
   },
   pet: {
