@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import PetView from './PetView.vue'
+import PetSpritePlayer from './PetSpritePlayer.vue'
 import SettingsPanel from './SettingsPanel.vue'
 
 type Message = {
@@ -40,6 +41,7 @@ const loadError = ref('')
 const sendError = ref('')
 const isRoomOpen = ref(false)
 const isSettingsOpen = ref(false)
+const roomSpriteAvailable = ref(false)
 const currentRequestId = ref('')
 const providerSummary = ref<ProviderSummary>()
 const canSend = computed(() => draft.value.trim().length > 0 && !isThinking.value)
@@ -53,8 +55,13 @@ const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
 const closeWindow = (): Promise<void> => window.api.window.close()
 const openRoom = async (): Promise<void> => {
-  await window.api.window.setMode('room')
   isRoomOpen.value = true
+  try {
+    await window.api.window.setMode('room')
+  } catch (error) {
+    isRoomOpen.value = false
+    console.error('无法进入陪伴空间', error)
+  }
 }
 const closeRoom = async (): Promise<void> => {
   isRoomOpen.value = false
@@ -236,7 +243,17 @@ async function sendMessage(): Promise<void> {
         <div class="character-scene" aria-label="角色展示占位">
           <div class="moon"></div>
           <div class="window-rain"></div>
-          <div class="character-silhouette">
+          <PetSpritePlayer
+            class="room-sprite-player"
+            :width="600"
+            :height="712"
+            :character-size="360"
+            :foot-x="350"
+            :foot-y="622"
+            @ready="roomSpriteAvailable = true"
+            @unavailable="roomSpriteAvailable = false"
+          />
+          <div v-show="!roomSpriteAvailable" class="character-silhouette">
             <span class="hair"></span><span class="face"></span><span class="body"></span>
           </div>
           <div class="scene-floor"></div>

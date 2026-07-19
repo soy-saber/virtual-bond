@@ -224,6 +224,11 @@ function createWindow(): BrowserWindow {
     else window.hide()
   })
   window.webContents.on('context-menu', () => createContextMenu().popup({ window }))
+  if (is.dev) {
+    window.webContents.on('console-message', (event) => {
+      console.log(`[renderer:${event.level}] ${event.message}`)
+    })
+  }
   window.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }

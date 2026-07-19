@@ -1,24 +1,42 @@
 <script setup lang="ts">
+import 'pixi.js/unsafe-eval'
 import { Application, Assets, AnimatedSprite, Rectangle, Texture } from 'pixi.js'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
+const props = withDefaults(
+  defineProps<{
+    width?: number
+    height?: number
+    characterSize?: number
+    footX?: number
+    footY?: number
+  }>(),
+  {
+    width: 360,
+    height: 440,
+    characterSize: 256,
+    footX: 180,
+    footY: 350
+  }
+)
 const emit = defineEmits<{ ready: []; unavailable: [] }>()
 const host = ref<HTMLDivElement>()
 let app: Application | undefined
+let isInitialized = false
 let sprite: AnimatedSprite | undefined
 let activeSkinId = ''
 let loadSequence = 0
 let objectUrl: string | undefined
 
 async function play(requestedAction: string): Promise<boolean> {
-  if (!app || !activeSkinId) return false
+  if (!app || !isInitialized || !activeSkinId) return false
   const sequence = ++loadSequence
   try {
     const asset = await window.api.skins.loadAnimation(activeSkinId, requestedAction)
     const nextUrl = URL.createObjectURL(
       new Blob([new Uint8Array(asset.bytes).buffer], { type: asset.mimeType })
     )
-    const baseTexture = await Assets.load<Texture>(nextUrl)
+    const baseTexture = await Assets.load<Texture>({ src: nextUrl, parser: 'texture' })
     if (sequence !== loadSequence || !app) {
       URL.revokeObjectURL(nextUrl)
       return false
@@ -42,9 +60,12 @@ async function play(requestedAction: string): Promise<boolean> {
       asset.canvas.anchor.x / asset.animation.frameWidth,
       asset.canvas.anchor.y / asset.animation.frameHeight
     )
-    const scale = Math.min(1, 256 / asset.canvas.width, 256 / asset.canvas.height)
+    const scale = Math.min(
+      props.characterSize / asset.canvas.width,
+      props.characterSize / asset.canvas.height
+    )
     sprite.scale.set(scale)
-    sprite.position.set(180, 350)
+    sprite.position.set(props.footX, props.footY)
     sprite.loop = asset.animation.loop
     sprite.animationSpeed = asset.animation.fps / 60
     sprite.onComplete = () => {
@@ -69,21 +90,32 @@ defineExpose({ play })
 
 onMounted(async () => {
   if (!host.value) return
-  app = new Application()
-  await app.init({ width: 360, height: 440, backgroundAlpha: 0, antialias: true })
-  host.value.appendChild(app.canvas)
-  const result = await window.api.skins.list()
-  activeSkinId = result.skins[0]?.manifest.id ?? ''
-  if (!activeSkinId || !(await play('idle'))) emit('unavailable')
+  try {
+    app = new Application()
+    await app.init({
+      width: props.width,
+      height: props.height,
+      backgroundAlpha: 0,
+      antialias: true
+    })
+    isInitialized = true
+    host.value.appendChild(app.canvas)
+    const result = await window.api.skins.list()
+    activeSkinId = result.skins[0]?.manifest.id ?? ''
+    if (!activeSkinId || !(await play('idle'))) emit('unavailable')
+  } catch (error) {
+    console.warn('无法初始化皮肤播放器', error)
+    emit('unavailable')
+  }
 })
 
 onBeforeUnmount(() => {
   loadSequence += 1
   if (objectUrl) URL.revokeObjectURL(objectUrl)
-  app?.destroy(true, { children: true, texture: true })
+  if (isInitialized) app?.destroy(true, { children: true, texture: true })
 })
 </script>
 
 <template>
-  <div ref="host" class="pet-sprite-player" aria-hidden="true"></div>
+  <div ref="host" class="sprite-player" aria-hidden="true"></div>
 </template>
