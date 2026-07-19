@@ -6,6 +6,10 @@ export interface SkinAnimation {
   frameWidth: number
   frameHeight: number
   frames: number
+  columns: number
+  rows: number
+  margin: number
+  spacing: number
   fps: number
   loop: boolean
   next?: string
@@ -73,6 +77,18 @@ function requireFiniteNumber(value: unknown, label: string): number {
   return value
 }
 
+function requireNonNegativeNumber(value: unknown, label: string): number {
+  const numeric = requireFiniteNumber(value, label)
+  if (numeric < 0) throw new Error(`${label}不能小于 0`)
+  return numeric
+}
+
+function requirePositiveInteger(value: unknown, label: string): number {
+  const numeric = requirePositiveNumber(value, label)
+  if (!Number.isInteger(numeric)) throw new Error(`${label}必须是整数`)
+  return numeric
+}
+
 function resolveAsset(skinDirectory: string, file: string): string {
   if (isAbsolute(file)) throw new Error('动画文件必须使用皮肤目录内的相对路径')
   const resolvedRoot = resolve(skinDirectory)
@@ -106,11 +122,24 @@ export function loadSkinManifest(skinDirectory: string): SkinManifest {
     const name = rawName.trim()
     if (!name) throw new Error('动作名称不能为空')
     const animation = requireRecord(rawAnimation, `animations.${name}`)
+    const frames = requirePositiveInteger(animation.frames, `animations.${name}.frames`)
+    const columns = requirePositiveInteger(
+      animation.columns ?? frames,
+      `animations.${name}.columns`
+    )
+    const rows = requirePositiveInteger(animation.rows ?? 1, `animations.${name}.rows`)
+    if (columns * rows < frames) {
+      throw new Error(`animations.${name}的网格容量小于帧数`)
+    }
     animations[name] = {
       file: resolveAsset(skinDirectory, requireString(animation.file, `animations.${name}.file`)),
       frameWidth: requirePositiveNumber(animation.frameWidth, `animations.${name}.frameWidth`),
       frameHeight: requirePositiveNumber(animation.frameHeight, `animations.${name}.frameHeight`),
-      frames: requirePositiveNumber(animation.frames, `animations.${name}.frames`),
+      frames,
+      columns,
+      rows,
+      margin: requireNonNegativeNumber(animation.margin ?? 0, `animations.${name}.margin`),
+      spacing: requireNonNegativeNumber(animation.spacing ?? 0, `animations.${name}.spacing`),
       fps: requirePositiveNumber(animation.fps, `animations.${name}.fps`),
       loop: animation.loop !== false,
       ...(typeof animation.next === 'string' && animation.next.trim()

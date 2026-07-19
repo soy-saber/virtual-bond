@@ -43,7 +43,38 @@ test('loads an open-ended skin manifest with idle animation', () => {
     const manifest = loadSkinManifest(directory)
     assert.equal(manifest.id, 'test-skin')
     assert.equal(manifest.animations.idle.frames, 8)
+    assert.equal(manifest.animations.idle.columns, 8)
+    assert.equal(manifest.animations.idle.rows, 1)
     assert.equal(manifest.flipHorizontal, true)
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('accepts a multi-row generation grid and rejects insufficient capacity', () => {
+  const root = mkdtempSync(join(tmpdir(), 'virtual-bond-skin-'))
+  try {
+    const gridManifest = validManifest()
+    const idle = (gridManifest.animations as Record<string, Record<string, unknown>>).idle
+    idle.columns = 4
+    idle.rows = 2
+    idle.margin = 2
+    idle.spacing = 1
+    const directory = createSkin(root, 'grid', gridManifest)
+    const animation = loadSkinManifest(directory).animations.idle
+    assert.deepEqual(
+      {
+        columns: animation.columns,
+        rows: animation.rows,
+        margin: animation.margin,
+        spacing: animation.spacing
+      },
+      { columns: 4, rows: 2, margin: 2, spacing: 1 }
+    )
+
+    idle.rows = 1
+    writeFileSync(join(directory, 'manifest.json'), JSON.stringify(gridManifest))
+    assert.throws(() => loadSkinManifest(directory), /网格容量小于帧数/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

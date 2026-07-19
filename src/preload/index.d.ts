@@ -96,6 +96,10 @@ interface SkinScanView {
           frameWidth: number
           frameHeight: number
           frames: number
+          columns: number
+          rows: number
+          margin: number
+          spacing: number
           fps: number
           loop: boolean
           next?: string

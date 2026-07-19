@@ -40,8 +40,9 @@ skins/
 - `animations` 使用开放键名，加载器不维护固定动作枚举。
 - 只有 `idle` 是必选动作。
 - 缺少目标动作、图片损坏或参数无效时回退到 `idle`；默认皮肤也不可用时显示轻量降级界面。
-- 第一版资源使用横向 Sprite Sheet。
+- 第一版资源使用规则网格 Sprite Sheet，支持单行横向排列以及多行网格。
 - 每个动作独立声明文件、单帧尺寸、帧数、FPS、循环方式和可选下一动作。
+- 播放器将支持 `columns`、`rows`、`margin` 和 `spacing`，以适配图片模型更容易生成的近方形网格。
 - 皮肤级配置声明逻辑画布、脚底锚点、点击区域以及是否允许自动水平翻转。
 
 ## 当前实现状态
@@ -64,6 +65,20 @@ skins/
 - 当前皮肤选择和皮肤管理界面。
 - 文件变化监听与开发模式热重载。
 
+## 图片生成 Prompt
+
+仓库提供中文模板 [`resources/prompts/sprite-sheet.zh-CN.md`](../resources/prompts/sprite-sheet.zh-CN.md)，用于约束图片模型生成可切分的规则网格 Sprite Sheet。
+
+模板包含：
+
+- 角色、动作、布局和锚点变量。
+- 完整中文正向 Prompt。
+- 可独立使用的负面约束。
+- 八帧行走循环示例。
+- 生成后必须执行的尺寸、透明度、帧数和锚点校验。
+
+图片生成结果不能直接视为可信资源。后续播放器和皮肤工具仍需读取实际 PNG 尺寸并校验 Sheet 布局。
+
 示例：
 
 ```json
@@ -82,6 +97,10 @@ skins/
       "frameWidth": 256,
       "frameHeight": 256,
       "frames": 8,
+      "columns": 4,
+      "rows": 2,
+      "margin": 0,
+      "spacing": 0,
       "fps": 8,
       "loop": true
     }
