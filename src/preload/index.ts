@@ -40,6 +40,16 @@ const api = {
       ipcRenderer.invoke('skins:load-animation', skinId, action),
     openUserDirectory: (): Promise<void> => ipcRenderer.invoke('skins:open-user-directory')
   },
+  imageGeneration: {
+    getSettings: (): Promise<unknown> => ipcRenderer.invoke('image-settings:get'),
+    saveSettings: (settings: unknown): Promise<unknown> =>
+      ipcRenderer.invoke('image-settings:save', settings),
+    clearApiKey: (): Promise<unknown> => ipcRenderer.invoke('image-settings:clear-api-key'),
+    generate: (request: unknown): Promise<unknown> =>
+      ipcRenderer.invoke('images:generate', request),
+    editWithFilePicker: (request: unknown): Promise<unknown> =>
+      ipcRenderer.invoke('images:edit-with-picker', request)
+  },
   character: {
     getDefault: (): Promise<unknown> => ipcRenderer.invoke('character:get-default')
   },

@@ -23,6 +23,13 @@ interface VirtualBondAPI {
     loadAnimation: (skinId: string, action: string) => Promise<SkinAnimationAssetView>
     openUserDirectory: () => Promise<void>
   }
+  imageGeneration: {
+    getSettings: () => Promise<ImageProviderSettingsView>
+    saveSettings: (settings: ImageProviderSettingsDraft) => Promise<ImageProviderSettingsView>
+    clearApiKey: () => Promise<ImageProviderSettingsView>
+    generate: (request: ImageGenerationRequest) => Promise<Uint8Array[]>
+    editWithFilePicker: (request: ImageGenerationRequest) => Promise<Uint8Array[] | null>
+  }
   character: {
     getDefault: () => Promise<CharacterRecord>
   }
@@ -127,6 +134,27 @@ interface SkinAnimationAssetView {
     hitbox?: { x: number; y: number; width: number; height: number }
   }
   animation: SkinScanView['skins'][number]['manifest']['animations'][string]
+}
+
+interface ImageProviderSettingsDraft {
+  name: string
+  baseUrl: string
+  model: string
+  apiKey?: string
+}
+
+interface ImageProviderSettingsView extends Omit<ImageProviderSettingsDraft, 'apiKey'> {
+  source: string
+  updatedAt: string
+  apiKeyPresent: boolean
+  apiKeyHint: string
+}
+
+interface ImageGenerationRequest {
+  prompt: string
+  size?: string
+  quality?: 'auto' | 'low' | 'medium' | 'high' | 'hd'
+  n?: number
 }
 
 type ProviderKind = 'openai' | 'anthropic' | 'gemini' | 'custom'

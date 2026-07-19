@@ -1,6 +1,6 @@
-import { app, ipcMain, shell, type WebContents } from 'electron'
-import { mkdirSync } from 'fs'
-import { join } from 'path'
+import { app, dialog, ipcMain, shell, type WebContents } from 'electron'
+import { mkdirSync, readFileSync } from 'fs'
+import { extname, join } from 'path'
 import { describeProviderError, streamChatWithRetry } from './chat-provider'
 import {
   createMessage,
@@ -21,6 +21,13 @@ import {
 } from './provider-settings'
 import { scanSkins, type SkinScanResult } from './skin-loader'
 import { loadSkinAnimationAsset } from './skin-assets'
+import {
+  clearImageProviderApiKey,
+  editImages,
+  generateImages,
+  getImageProviderSettings,
+  saveImageProviderSettings
+} from './image-provider'
 
 interface ActiveRequest {
   controller: AbortController
@@ -148,6 +155,37 @@ export function registerApplicationIpc(): void {
     return importProviderSettingsFromCcswitch(provider)
   })
   ipcMain.handle('settings:import-text', (_, text: string) => importProviderSettingsFromText(text))
+  ipcMain.handle('image-settings:get', () => getImageProviderSettings())
+  ipcMain.handle('image-settings:save', (_, settings) => saveImageProviderSettings(settings))
+  ipcMain.handle('image-settings:clear-api-key', () => clearImageProviderApiKey())
+  ipcMain.handle('images:generate', async (_, request) => {
+    const images = await generateImages(request)
+    return images.map((bytes) => new Uint8Array(bytes))
+  })
+  ipcMain.handle('images:edit-with-picker', async (_, request) => {
+    const selection = await dialog.showOpenDialog({
+      title: '选择图片生成参考图',
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: '图片', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }]
+    })
+    if (selection.canceled || selection.filePaths.length === 0) return null
+    const mimeTypes: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.webp': 'image/webp',
+      '.gif': 'image/gif'
+    }
+    const images = await editImages(
+      request,
+      selection.filePaths.map((filePath) => ({
+        name: filePath.split(/[\\/]/).pop() ?? 'reference',
+        mimeType: mimeTypes[extname(filePath).toLowerCase()] ?? 'application/octet-stream',
+        bytes: new Uint8Array(readFileSync(filePath))
+      }))
+    )
+    return images.map((bytes) => new Uint8Array(bytes))
+  })
   ipcMain.handle('skins:list', () => {
     const result = getSkinScanResult()
     return {
