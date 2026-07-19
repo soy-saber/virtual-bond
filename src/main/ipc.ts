@@ -1,4 +1,6 @@
-import { ipcMain, type WebContents } from 'electron'
+import { app, ipcMain, shell, type WebContents } from 'electron'
+import { mkdirSync } from 'fs'
+import { join } from 'path'
 import { describeProviderError, streamChatWithRetry } from './chat-provider'
 import {
   createMessage,
@@ -17,6 +19,7 @@ import {
   resetProviderSettings,
   saveProviderSettings
 } from './provider-settings'
+import { scanSkins } from './skin-loader'
 
 interface ActiveRequest {
   controller: AbortController
@@ -129,4 +132,32 @@ export function registerApplicationIpc(): void {
     return importProviderSettingsFromCcswitch(provider)
   })
   ipcMain.handle('settings:import-text', (_, text: string) => importProviderSettingsFromText(text))
+  ipcMain.handle('skins:list', () => {
+    const result = scanSkins([
+      { directory: join(process.resourcesPath, 'skins'), source: 'builtin' },
+      ...(app.isPackaged
+        ? []
+        : [
+            {
+              directory: join(app.getAppPath(), 'resources', 'skins'),
+              source: 'development' as const
+            }
+          ]),
+      { directory: join(app.getPath('userData'), 'skins'), source: 'user' }
+    ])
+    return {
+      skins: result.skins.map(({ source, manifest }) => ({ source, manifest })),
+      invalid: result.invalid.map(({ source, directory, error }) => ({
+        source,
+        directoryName: directory.split(/[\\/]/).pop() ?? '',
+        error
+      }))
+    }
+  })
+  ipcMain.handle('skins:open-user-directory', async () => {
+    const directory = join(app.getPath('userData'), 'skins')
+    mkdirSync(directory, { recursive: true })
+    const error = await shell.openPath(directory)
+    if (error) throw new Error(error)
+  })
 }

@@ -17,6 +17,10 @@ interface VirtualBondAPI {
     onSay: (listener: (message: string) => void) => () => void
     onOpenRoom: (listener: () => void) => () => void
   }
+  skins: {
+    list: () => Promise<SkinScanView>
+    openUserDirectory: () => Promise<void>
+  }
   character: {
     getDefault: () => Promise<CharacterRecord>
   }
@@ -68,6 +72,41 @@ interface SendMessageResult {
 interface ConversationDelta {
   requestId: string
   delta: string
+}
+
+interface SkinScanView {
+  skins: Array<{
+    source: 'builtin' | 'user' | 'development'
+    manifest: {
+      id: string
+      name: string
+      version: number
+      canvas: {
+        width: number
+        height: number
+        anchor: { x: number; y: number }
+        hitbox?: { x: number; y: number; width: number; height: number }
+      }
+      flipHorizontal: boolean
+      animations: Record<
+        string,
+        {
+          file: string
+          frameWidth: number
+          frameHeight: number
+          frames: number
+          fps: number
+          loop: boolean
+          next?: string
+        }
+      >
+    }
+  }>
+  invalid: Array<{
+    source: 'builtin' | 'user' | 'development'
+    directoryName: string
+    error: string
+  }>
 }
 
 type ProviderKind = 'openai' | 'anthropic' | 'gemini' | 'custom'

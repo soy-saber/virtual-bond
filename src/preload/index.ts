@@ -29,6 +29,10 @@ const api = {
       return () => ipcRenderer.removeListener('app:open-room', handler)
     }
   },
+  skins: {
+    list: (): Promise<unknown> => ipcRenderer.invoke('skins:list'),
+    openUserDirectory: (): Promise<void> => ipcRenderer.invoke('skins:open-user-directory')
+  },
   character: {
     getDefault: (): Promise<unknown> => ipcRenderer.invoke('character:get-default')
   },
