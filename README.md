@@ -111,7 +111,7 @@ npm ci
 
 图片 API、安全密钥、标准角色参考、1K 模板到 4K 优化流程和高质量测试皮肤见 [`docs/image-generation.md`](docs/image-generation.md)。
 
-本轮开发中遇到的环境、Electron、SQLite、CCSwitch、流式 IPC 和密钥安全问题，见 [`docs/troubleshooting.md`](docs/troubleshooting.md)。
+本轮开发中遇到的环境、Electron、SQLite、CCSwitch、流式 IPC、图片生成、PixiJS 和动画素材问题，见 [`docs/troubleshooting.md`](docs/troubleshooting.md)。
 
 ## 开发计划
 
