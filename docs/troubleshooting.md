@@ -319,7 +319,7 @@ CCSwitch 当前 Codex 配置可由 Codex CLI 正常调用，但 Virtual Bond 使
 
 ### 约定
 
-本地测试凭据位于用户指定的 `C:\Users\walex\Desktop\key\key.txt`。它只允许在临时测试程序运行时读取：
+本地测试凭据位于用户指定的仓库外部 Key 文件。它只允许在临时测试程序运行时读取：
 
 - 不复制进项目目录。
 - 不写入源码、文档、测试快照或 Git 历史。
