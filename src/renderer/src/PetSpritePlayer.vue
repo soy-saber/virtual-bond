@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import 'pixi.js/unsafe-eval'
 import { Application, Assets, AnimatedSprite, Rectangle, Texture } from 'pixi.js'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
@@ -10,6 +10,7 @@ const props = withDefaults(
     characterSize?: number
     footX?: number
     footY?: number
+    skinId?: string
   }>(),
   {
     width: 360,
@@ -29,6 +30,7 @@ let sprite: AnimatedSprite | undefined
 let activeSkinId = ''
 let loadSequence = 0
 let objectUrl: string | undefined
+const SKIN_CHANGED_EVENT = 'virtual-bond:skin-changed'
 
 async function play(requestedAction: string): Promise<boolean> {
   if (!app || !isInitialized || !activeSkinId) return false
@@ -104,6 +106,23 @@ async function play(requestedAction: string): Promise<boolean> {
   }
 }
 
+async function activateSkin(skinId: string): Promise<void> {
+  activeSkinId = skinId.trim()
+  if (!activeSkinId) {
+    sprite?.destroy({ texture: true })
+    sprite = undefined
+    emit('unavailable')
+    return
+  }
+  await play('idle')
+}
+
+function handleSkinChanged(event: Event): void {
+  if (props.skinId) return
+  const skinId = (event as CustomEvent<{ skinId?: string }>).detail?.skinId
+  if (typeof skinId === 'string') void activateSkin(skinId)
+}
+
 defineExpose({ play })
 
 onMounted(async () => {
@@ -121,17 +140,25 @@ onMounted(async () => {
     })
     isInitialized = true
     host.value.appendChild(app.canvas)
-    const result = await window.api.skins.list()
-    activeSkinId = result.skins[0]?.manifest.id ?? ''
-    if (!activeSkinId || !(await play('idle'))) emit('unavailable')
+    const initialSkinId = props.skinId?.trim() || (await window.api.skins.list()).selectedSkinId
+    await activateSkin(initialSkinId)
+    window.addEventListener(SKIN_CHANGED_EVENT, handleSkinChanged)
   } catch (error) {
     console.warn('无法初始化皮肤播放器', error)
     emit('unavailable')
   }
 })
 
+watch(
+  () => props.skinId,
+  (skinId) => {
+    if (isInitialized && typeof skinId === 'string') void activateSkin(skinId)
+  }
+)
+
 onBeforeUnmount(() => {
   loadSequence += 1
+  window.removeEventListener(SKIN_CHANGED_EVENT, handleSkinChanged)
   if (objectUrl) URL.revokeObjectURL(objectUrl)
   if (isInitialized) app?.destroy(true, { children: true, texture: true })
 })

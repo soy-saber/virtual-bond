@@ -6,7 +6,9 @@ import {
   createMessage,
   createPendingCompanionMessage,
   getDefaultCharacter,
+  getSetting,
   listMessages,
+  setSetting,
   updateCompanionMessage
 } from './database'
 import {
@@ -19,7 +21,7 @@ import {
   resetProviderSettings,
   saveProviderSettings
 } from './provider-settings'
-import { scanSkins, type SkinScanResult } from './skin-loader'
+import { resolveSkinSelection, scanSkins, type SkinScanResult } from './skin-loader'
 import { loadSkinAnimationAsset } from './skin-assets'
 import {
   clearImageProviderApiKey,
@@ -35,6 +37,7 @@ interface ActiveRequest {
 }
 
 const activeRequests = new Map<string, ActiveRequest>()
+const ACTIVE_SKIN_SETTING = 'skin.activeId'
 
 function getSkinScanResult(): SkinScanResult {
   return scanSkins([
@@ -49,6 +52,34 @@ function getSkinScanResult(): SkinScanResult {
         ]),
     { directory: join(app.getPath('userData'), 'skins'), source: 'user' }
   ])
+}
+
+function getSkinScanView(): {
+  selectedSkinId: string
+  selectionRecovered: boolean
+  skins: Array<Pick<SkinScanResult['skins'][number], 'source' | 'manifest'>>
+  invalid: Array<{
+    source: 'builtin' | 'user' | 'development'
+    directoryName: string
+    error: string
+  }>
+} {
+  const result = getSkinScanResult()
+  const requestedSkinId = getSetting(ACTIVE_SKIN_SETTING, '')
+  const selection = resolveSkinSelection(result, requestedSkinId)
+  if (selection.selectedSkinId !== requestedSkinId) {
+    setSetting(ACTIVE_SKIN_SETTING, selection.selectedSkinId)
+  }
+  return {
+    selectedSkinId: selection.selectedSkinId,
+    selectionRecovered: selection.selectionRecovered,
+    skins: result.skins.map(({ source, manifest }) => ({ source, manifest })),
+    invalid: result.invalid.map(({ source, directory, error }) => ({
+      source,
+      directoryName: directory.split(/[\\/]/).pop() ?? '',
+      error
+    }))
+  }
 }
 
 function requireShortString(value: unknown, label: string, maxLength: number): string {
@@ -186,16 +217,16 @@ export function registerApplicationIpc(): void {
     )
     return images.map((bytes) => new Uint8Array(bytes))
   })
-  ipcMain.handle('skins:list', () => {
+  ipcMain.handle('skins:list', () => getSkinScanView())
+  ipcMain.handle('skins:rescan', () => getSkinScanView())
+  ipcMain.handle('skins:select', (_, rawSkinId: unknown) => {
+    const skinId = requireShortString(rawSkinId, '皮肤 ID', 100)
     const result = getSkinScanResult()
-    return {
-      skins: result.skins.map(({ source, manifest }) => ({ source, manifest })),
-      invalid: result.invalid.map(({ source, directory, error }) => ({
-        source,
-        directoryName: directory.split(/[\\/]/).pop() ?? '',
-        error
-      }))
+    if (!result.skins.some((skin) => skin.manifest.id === skinId)) {
+      throw new Error('皮肤不存在、已损坏或已被移除')
     }
+    setSetting(ACTIVE_SKIN_SETTING, skinId)
+    return getSkinScanView()
   })
   ipcMain.handle('skins:load-animation', (_, rawSkinId: unknown, rawAction: unknown) => {
     const skinId = requireShortString(rawSkinId, '皮肤 ID', 100)

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { loadSkinManifest, scanSkins } from '../src/main/skin-loader'
+import { loadSkinManifest, resolveSkinSelection, scanSkins } from '../src/main/skin-loader'
 
 function createSkin(
   root: string,
@@ -111,6 +111,53 @@ test('lets later user roots override a built-in skin with the same id', () => {
     assert.equal(result.skins.length, 1)
     assert.equal(result.skins[0].manifest.name, '用户皮肤')
     assert.equal(result.skins[0].source, 'user')
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('keeps a valid selected skin and recovers a removed selection', () => {
+  const root = mkdtempSync(join(tmpdir(), 'virtual-bond-skin-'))
+  try {
+    createSkin(root, 'alpha', { ...validManifest('alpha'), name: 'Alpha' })
+    createSkin(root, 'beta', { ...validManifest('beta'), name: 'Beta' })
+    const result = scanSkins([{ directory: root, source: 'user' }])
+
+    assert.deepEqual(resolveSkinSelection(result, 'beta'), {
+      selectedSkinId: 'beta',
+      requestedSkinId: 'beta',
+      selectionRecovered: false
+    })
+    assert.deepEqual(resolveSkinSelection(result, 'removed'), {
+      selectedSkinId: 'alpha',
+      requestedSkinId: 'removed',
+      selectionRecovered: true
+    })
+    assert.deepEqual(resolveSkinSelection({ skins: [], invalid: [] }, 'removed'), {
+      selectedSkinId: '',
+      requestedSkinId: 'removed',
+      selectionRecovered: true
+    })
+  } finally {
+    rmSync(root, { recursive: true, force: true })
+  }
+})
+
+test('reports an unreadable skin root without aborting other roots', () => {
+  const root = mkdtempSync(join(tmpdir(), 'virtual-bond-skin-'))
+  try {
+    const invalidRoot = join(root, 'not-a-directory')
+    const validRoot = join(root, 'valid-root')
+    writeFileSync(invalidRoot, 'file')
+    createSkin(validRoot, 'valid', validManifest())
+
+    const result = scanSkins([
+      { directory: invalidRoot, source: 'user' },
+      { directory: validRoot, source: 'builtin' }
+    ])
+    assert.equal(result.skins.length, 1)
+    assert.equal(result.invalid.length, 1)
+    assert.match(result.invalid[0].error, /无法读取皮肤目录/)
   } finally {
     rmSync(root, { recursive: true, force: true })
   }

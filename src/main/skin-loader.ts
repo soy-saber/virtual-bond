@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, type Dirent } from 'fs'
 import { isAbsolute, relative, resolve } from 'path'
 
 export interface SkinAnimation {
@@ -44,6 +44,12 @@ export interface InvalidSkin {
 export interface SkinScanResult {
   skins: LoadedSkin[]
   invalid: InvalidSkin[]
+}
+
+export interface SkinSelectionResult {
+  selectedSkinId: string
+  requestedSkinId: string
+  selectionRecovered: boolean
 }
 
 interface SkinRoot {
@@ -183,9 +189,19 @@ export function scanSkins(roots: SkinRoot[]): SkinScanResult {
 
   for (const root of roots) {
     if (!existsSync(root.directory)) continue
-    const entries = readdirSync(root.directory, { withFileTypes: true })
-      .filter((entry) => entry.isDirectory())
-      .sort((left, right) => left.name.localeCompare(right.name))
+    let entries: Dirent[]
+    try {
+      entries = readdirSync(root.directory, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .sort((left, right) => left.name.localeCompare(right.name))
+    } catch (error) {
+      invalid.push({
+        directory: root.directory,
+        source: root.source,
+        error: `无法读取皮肤目录：${error instanceof Error ? error.message : '未知错误'}`
+      })
+      continue
+    }
     for (const entry of entries) {
       const directory = resolve(root.directory, entry.name)
       try {
@@ -206,5 +222,19 @@ export function scanSkins(roots: SkinRoot[]): SkinScanResult {
       left.manifest.name.localeCompare(right.manifest.name)
     ),
     invalid
+  }
+}
+
+export function resolveSkinSelection(
+  result: SkinScanResult,
+  requestedSkinId: unknown
+): SkinSelectionResult {
+  const requested = typeof requestedSkinId === 'string' ? requestedSkinId.trim() : ''
+  const selected = result.skins.find((skin) => skin.manifest.id === requested) ?? result.skins[0]
+  const selectedSkinId = selected?.manifest.id ?? ''
+  return {
+    selectedSkinId,
+    requestedSkinId: requested,
+    selectionRecovered: Boolean(requested && requested !== selectedSkinId)
   }
 }

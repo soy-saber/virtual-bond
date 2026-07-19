@@ -984,6 +984,7 @@ button {
 .pet-display-settings {
   display: grid;
   gap: 10px;
+  margin-bottom: 16px;
   padding: 14px 16px;
   border: 1px solid rgba(214, 199, 255, 0.12);
   border-radius: 14px;
@@ -1009,6 +1010,181 @@ button {
 .pet-display-settings small {
   color: #9890ad;
   font-size: 11px;
+}
+.skin-settings {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 14px 16px;
+  border: 1px solid rgba(214, 199, 255, 0.12);
+  border-radius: 14px;
+  background: rgba(38, 32, 61, 0.42);
+}
+.skin-count {
+  color: #8f87a2;
+  font-size: 10px;
+}
+.skin-browser {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  gap: 12px;
+}
+.skin-preview {
+  position: relative;
+  min-height: 280px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 50% 40%, rgba(151, 123, 202, 0.16), transparent 48%),
+    rgba(11, 10, 20, 0.5);
+  text-align: center;
+}
+.skin-preview .sprite-player,
+.skin-preview canvas {
+  display: block;
+  width: 190px;
+  height: 230px;
+}
+.skin-preview > strong,
+.skin-preview > small {
+  display: block;
+  position: relative;
+  z-index: 2;
+  padding: 0 8px;
+}
+.skin-preview > strong {
+  margin-top: 5px;
+  color: #ddd5ea;
+  font-size: 11px;
+}
+.skin-preview > small {
+  margin-top: 4px;
+  color: #7f788f;
+  font-size: 8px;
+}
+.skin-preview-fallback {
+  position: absolute;
+  top: 104px;
+  left: 0;
+  right: 0;
+  color: #8e879b;
+  font-size: 10px;
+}
+.skin-list {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding-right: 3px;
+  scrollbar-width: thin;
+  scrollbar-color: #4a435d transparent;
+}
+.skin-list button {
+  position: relative;
+  min-height: 53px;
+  padding: 9px 62px 9px 11px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(18, 16, 29, 0.56);
+  color: #b8b1c5;
+  text-align: left;
+}
+.skin-list button:hover,
+.skin-list button.previewing {
+  border-color: rgba(190, 163, 235, 0.38);
+  background: rgba(104, 82, 143, 0.16);
+}
+.skin-list button.selected {
+  border-color: rgba(111, 187, 148, 0.3);
+}
+.skin-list button span,
+.skin-list button small {
+  display: block;
+}
+.skin-list button span {
+  font-size: 11px;
+}
+.skin-list button small {
+  margin-top: 4px;
+  color: #777083;
+  font-size: 8px;
+}
+.skin-list button i {
+  position: absolute;
+  top: 18px;
+  right: 10px;
+  color: #82c6a5;
+  font-size: 8px;
+  font-style: normal;
+}
+.skin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.skin-actions button {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #aaa4b6;
+  font-size: 9px;
+}
+.skin-actions button.primary {
+  border-color: rgba(185, 156, 233, 0.25);
+  color: #d2c0f0;
+}
+.skin-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.skin-empty {
+  margin: 0;
+  padding: 20px 12px;
+  border-radius: 10px;
+  background: rgba(8, 7, 16, 0.25);
+  color: #8f879d;
+  font-size: 10px;
+  line-height: 1.6;
+  text-align: center;
+}
+.invalid-skins {
+  padding: 10px 11px;
+  border: 1px solid rgba(198, 112, 130, 0.16);
+  border-radius: 9px;
+  background: rgba(91, 32, 45, 0.12);
+}
+.invalid-skins summary {
+  color: #c58b98;
+  font-size: 9px;
+  cursor: pointer;
+}
+.invalid-skins ul {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.invalid-skins li strong,
+.invalid-skins li span {
+  display: block;
+}
+.invalid-skins li strong {
+  color: #c9aab1;
+  font-size: 9px;
+}
+.invalid-skins li span {
+  margin-top: 3px;
+  color: #8f737b;
+  font-size: 8px;
+  line-height: 1.5;
+}
+.skin-message {
+  margin-top: 0;
 }
 .secret-status {
   display: flex;

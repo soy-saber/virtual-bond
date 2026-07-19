@@ -21,6 +21,8 @@ interface VirtualBondAPI {
   }
   skins: {
     list: () => Promise<SkinScanView>
+    rescan: () => Promise<SkinScanView>
+    select: (skinId: string) => Promise<SkinScanView>
     loadAnimation: (skinId: string, action: string) => Promise<SkinAnimationAssetView>
     openUserDirectory: () => Promise<void>
   }
@@ -85,6 +87,8 @@ interface ConversationDelta {
 }
 
 interface SkinScanView {
+  selectedSkinId: string
+  selectionRecovered: boolean
   skins: Array<{
     source: 'builtin' | 'user' | 'development'
     manifest: {

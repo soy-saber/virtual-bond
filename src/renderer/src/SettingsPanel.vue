@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
+import PetSpritePlayer from './PetSpritePlayer.vue'
 
 type ProviderKind = 'openai' | 'anthropic' | 'gemini' | 'custom'
+type SkinScanResultView = Awaited<ReturnType<typeof window.api.skins.list>>
 
 interface ProviderSettingsView {
   provider: ProviderKind
@@ -23,6 +25,14 @@ const error = ref('')
 const apiKey = ref('')
 const importText = ref('')
 const petScale = ref(0.75)
+const skinScan = ref<SkinScanResultView>()
+const selectedSkinId = ref('')
+const previewSkinId = ref('')
+const skinPreviewAvailable = ref(false)
+const skinPreviewKey = ref(0)
+const isScanningSkins = ref(false)
+const skinNotice = ref('')
+const skinError = ref('')
 const current = ref<ProviderSettingsView>()
 const form = reactive({
   provider: 'openai' as ProviderKind,
@@ -45,6 +55,48 @@ const providerNote = computed(() => {
   }
   return ''
 })
+
+const previewSkin = computed(() =>
+  skinScan.value?.skins.find((skin) => skin.manifest.id === previewSkinId.value)
+)
+
+function skinSourceLabel(source: 'builtin' | 'user' | 'development'): string {
+  if (source === 'user') return '用户目录'
+  if (source === 'development') return '开发资源'
+  return '内置'
+}
+
+function applySkinScan(scan: SkinScanResultView, preservePreview = false): void {
+  const previousPreview = previewSkinId.value
+  skinScan.value = scan
+  selectedSkinId.value = scan.selectedSkinId
+  const availableIds = new Set(scan.skins.map((skin) => skin.manifest.id))
+  previewSkinId.value =
+    preservePreview && availableIds.has(previousPreview)
+      ? previousPreview
+      : scan.selectedSkinId || scan.skins[0]?.manifest.id || ''
+  skinPreviewAvailable.value = false
+  skinPreviewKey.value += 1
+  if (scan.selectionRecovered) {
+    skinNotice.value = scan.selectedSkinId
+      ? '原皮肤已不可用，已自动回退到第一套可用皮肤。'
+      : '原皮肤已不可用，当前没有可加载的皮肤。'
+  }
+}
+
+function previewSkinById(skinId: string): void {
+  if (previewSkinId.value === skinId) return
+  previewSkinId.value = skinId
+  skinPreviewAvailable.value = false
+}
+
+function notifySkinChanged(skinId: string): void {
+  window.dispatchEvent(
+    new CustomEvent('virtual-bond:skin-changed', {
+      detail: { skinId }
+    })
+  )
+}
 
 function applySettings(settings: ProviderSettingsView): void {
   current.value = settings
@@ -81,16 +133,63 @@ function applyProviderDefaults(): void {
 async function loadSettings(): Promise<void> {
   clearMessages()
   try {
-    const [settings, scale] = await Promise.all([
+    const [settings, scale, skins] = await Promise.all([
       window.api.settings.get(),
-      window.api.window.getPetScale()
+      window.api.window.getPetScale(),
+      window.api.skins.list()
     ])
     applySettings(settings)
     petScale.value = scale
+    applySkinScan(skins)
   } catch (loadError) {
     error.value = loadError instanceof Error ? loadError.message : '无法读取设置'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function selectPreviewSkin(): Promise<void> {
+  if (!previewSkinId.value || previewSkinId.value === selectedSkinId.value) return
+  skinNotice.value = ''
+  skinError.value = ''
+  isScanningSkins.value = true
+  try {
+    const scan = await window.api.skins.select(previewSkinId.value)
+    applySkinScan(scan, true)
+    notifySkinChanged(scan.selectedSkinId)
+    skinNotice.value = `已切换为“${previewSkin.value?.manifest.name ?? scan.selectedSkinId}”`
+  } catch (selectionError) {
+    skinError.value = selectionError instanceof Error ? selectionError.message : '切换皮肤失败'
+  } finally {
+    isScanningSkins.value = false
+  }
+}
+
+async function rescanSkins(): Promise<void> {
+  skinNotice.value = ''
+  skinError.value = ''
+  isScanningSkins.value = true
+  try {
+    const scan = await window.api.skins.rescan()
+    applySkinScan(scan, true)
+    notifySkinChanged(scan.selectedSkinId)
+    if (!scan.selectionRecovered) {
+      skinNotice.value = `扫描完成：${scan.skins.length} 套可用，${scan.invalid.length} 套存在问题。`
+    }
+  } catch (scanError) {
+    skinError.value = scanError instanceof Error ? scanError.message : '重新扫描皮肤失败'
+  } finally {
+    isScanningSkins.value = false
+  }
+}
+
+async function openSkinDirectory(): Promise<void> {
+  skinError.value = ''
+  try {
+    await window.api.skins.openUserDirectory()
+    skinNotice.value = '已打开用户皮肤目录；放入资源后点击“重新扫描”。'
+  } catch (directoryError) {
+    skinError.value = directoryError instanceof Error ? directoryError.message : '无法打开皮肤目录'
   }
 }
 
@@ -218,6 +317,85 @@ onMounted(loadSettings)
             @change="updatePetScale"
           />
           <small>可在 45%–180% 之间调整，窗口、角色、气泡和点击区域保持同一比例。</small>
+        </section>
+
+        <section class="skin-settings">
+          <div class="setting-title-row">
+            <div>
+              <span class="eyebrow">COMPANION SKIN</span>
+              <h3>角色皮肤</h3>
+            </div>
+            <span class="skin-count">{{ skinScan?.skins.length ?? 0 }} 套可用</span>
+          </div>
+
+          <div v-if="skinScan?.skins.length" class="skin-browser">
+            <div class="skin-preview">
+              <PetSpritePlayer
+                v-if="previewSkinId"
+                :key="`${previewSkinId}-${skinPreviewKey}`"
+                :skin-id="previewSkinId"
+                :width="190"
+                :height="230"
+                :character-size="180"
+                :foot-x="95"
+                :foot-y="218"
+                @ready="skinPreviewAvailable = true"
+                @unavailable="skinPreviewAvailable = false"
+              />
+              <span v-if="!skinPreviewAvailable" class="skin-preview-fallback">无法预览</span>
+              <strong>{{ previewSkin?.manifest.name }}</strong>
+              <small>
+                {{ skinSourceLabel(previewSkin?.source ?? 'builtin') }} · v{{
+                  previewSkin?.manifest.version
+                }}
+              </small>
+            </div>
+
+            <div class="skin-list" role="listbox" aria-label="可用皮肤">
+              <button
+                v-for="skin in skinScan.skins"
+                :key="`${skin.source}-${skin.manifest.id}`"
+                :class="{
+                  previewing: previewSkinId === skin.manifest.id,
+                  selected: selectedSkinId === skin.manifest.id
+                }"
+                role="option"
+                :aria-selected="selectedSkinId === skin.manifest.id"
+                @click="previewSkinById(skin.manifest.id)"
+              >
+                <span>{{ skin.manifest.name }}</span>
+                <small>{{ skinSourceLabel(skin.source) }}</small>
+                <i v-if="selectedSkinId === skin.manifest.id">使用中</i>
+              </button>
+            </div>
+          </div>
+          <p v-else class="skin-empty">没有可用皮肤。请打开用户目录并放入符合规范的皮肤包。</p>
+
+          <div class="skin-actions">
+            <button
+              class="primary"
+              :disabled="isScanningSkins || !previewSkinId || previewSkinId === selectedSkinId"
+              @click="selectPreviewSkin"
+            >
+              {{ previewSkinId === selectedSkinId ? '当前正在使用' : '使用此皮肤' }}
+            </button>
+            <button :disabled="isScanningSkins" @click="rescanSkins">
+              {{ isScanningSkins ? '扫描中……' : '重新扫描' }}
+            </button>
+            <button @click="openSkinDirectory">打开皮肤目录</button>
+          </div>
+
+          <details v-if="skinScan?.invalid.length" class="invalid-skins">
+            <summary>{{ skinScan.invalid.length }} 套皮肤未能加载</summary>
+            <ul>
+              <li v-for="item in skinScan.invalid" :key="`${item.source}-${item.directoryName}`">
+                <strong>{{ item.directoryName }}</strong>
+                <span>{{ skinSourceLabel(item.source) }}：{{ item.error }}</span>
+              </li>
+            </ul>
+          </details>
+          <p v-if="skinNotice" class="settings-notice skin-message">{{ skinNotice }}</p>
+          <p v-if="skinError" class="settings-error skin-message">{{ skinError }}</p>
         </section>
 
         <div class="settings-grid">

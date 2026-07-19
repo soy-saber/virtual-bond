@@ -38,6 +38,8 @@ const api = {
   },
   skins: {
     list: (): Promise<unknown> => ipcRenderer.invoke('skins:list'),
+    rescan: (): Promise<unknown> => ipcRenderer.invoke('skins:rescan'),
+    select: (skinId: string): Promise<unknown> => ipcRenderer.invoke('skins:select', skinId),
     loadAnimation: (skinId: string, action: string): Promise<unknown> =>
       ipcRenderer.invoke('skins:load-animation', skinId, action),
     openUserDirectory: (): Promise<void> => ipcRenderer.invoke('skins:open-user-directory')
