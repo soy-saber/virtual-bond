@@ -23,7 +23,7 @@ const POSITION_SETTING = 'window.petBounds'
 const SCALE_SETTING = 'window.petScale'
 const DEFAULT_PET_SCALE = 0.75
 const MIN_PET_SCALE = 0.45
-const MAX_PET_SCALE = 1.8
+const MAX_PET_SCALE = 2.4
 
 let mainWindow: BrowserWindow | undefined
 let tray: Tray | undefined

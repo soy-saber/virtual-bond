@@ -311,12 +311,12 @@ onMounted(loadSettings)
             v-model.number="petScale"
             type="range"
             min="0.45"
-            max="1.8"
+            max="2.4"
             step="0.05"
             aria-label="桌宠显示比例"
             @change="updatePetScale"
           />
-          <small>可在 45%–180% 之间调整，窗口、角色、气泡和点击区域保持同一比例。</small>
+          <small>可在 45%–240% 之间调整，窗口、角色、气泡和点击区域保持同一比例。</small>
         </section>
 
         <section class="skin-settings">

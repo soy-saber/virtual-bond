@@ -21,6 +21,12 @@ const props = withDefaults(
   }
 )
 type SpriteHitbox = { left: number; top: number; width: number; height: number }
+type SpriteCanvas = {
+  width: number
+  height: number
+  anchor: { x: number; y: number }
+  hitbox?: { x: number; y: number; width: number; height: number }
+}
 
 const emit = defineEmits<{ ready: [hitbox: SpriteHitbox]; unavailable: [] }>()
 const host = ref<HTMLDivElement>()
@@ -30,7 +36,30 @@ let sprite: AnimatedSprite | undefined
 let activeSkinId = ''
 let loadSequence = 0
 let objectUrl: string | undefined
+let activeCanvas: SpriteCanvas | undefined
 const SKIN_CHANGED_EVENT = 'virtual-bond:skin-changed'
+
+function applySpriteLayout(): void {
+  if (!sprite || !activeCanvas) return
+  const scale = Math.min(
+    props.characterSize / activeCanvas.width,
+    props.characterSize / activeCanvas.height
+  )
+  sprite.scale.set(scale)
+  sprite.position.set(props.footX, props.footY)
+  const hitbox = activeCanvas.hitbox ?? {
+    x: 0,
+    y: 0,
+    width: activeCanvas.width,
+    height: activeCanvas.height
+  }
+  emit('ready', {
+    left: props.footX + (hitbox.x - activeCanvas.anchor.x) * scale,
+    top: props.footY + (hitbox.y - activeCanvas.anchor.y) * scale,
+    width: hitbox.width * scale,
+    height: hitbox.height * scale
+  })
+}
 
 async function play(requestedAction: string): Promise<boolean> {
   if (!app || !isInitialized || !activeSkinId) return false
@@ -68,12 +97,8 @@ async function play(requestedAction: string): Promise<boolean> {
       asset.canvas.anchor.x / asset.animation.frameWidth,
       asset.canvas.anchor.y / asset.animation.frameHeight
     )
-    const scale = Math.min(
-      props.characterSize / asset.canvas.width,
-      props.characterSize / asset.canvas.height
-    )
-    sprite.scale.set(scale)
-    sprite.position.set(props.footX, props.footY)
+    activeCanvas = asset.canvas
+    applySpriteLayout()
     sprite.roundPixels = true
     sprite.loop = asset.animation.loop
     sprite.animationSpeed = asset.animation.fps / 60
@@ -85,18 +110,6 @@ async function play(requestedAction: string): Promise<boolean> {
     sprite.play()
     if (objectUrl) URL.revokeObjectURL(objectUrl)
     objectUrl = nextUrl
-    const hitbox = asset.canvas.hitbox ?? {
-      x: 0,
-      y: 0,
-      width: asset.canvas.width,
-      height: asset.canvas.height
-    }
-    emit('ready', {
-      left: props.footX + (hitbox.x - asset.canvas.anchor.x) * scale,
-      top: props.footY + (hitbox.y - asset.canvas.anchor.y) * scale,
-      width: hitbox.width * scale,
-      height: hitbox.height * scale
-    })
     return true
   } catch (error) {
     console.warn(`无法播放皮肤动作 ${requestedAction}`, error)
@@ -111,6 +124,7 @@ async function activateSkin(skinId: string): Promise<void> {
   if (!activeSkinId) {
     sprite?.destroy({ texture: true })
     sprite = undefined
+    activeCanvas = undefined
     emit('unavailable')
     return
   }
@@ -153,6 +167,15 @@ watch(
   () => props.skinId,
   (skinId) => {
     if (isInitialized && typeof skinId === 'string') void activateSkin(skinId)
+  }
+)
+
+watch(
+  () => [props.width, props.height, props.characterSize, props.footX, props.footY] as const,
+  ([width, height]) => {
+    if (!app || !isInitialized) return
+    app.renderer.resize(width, height)
+    applySpriteLayout()
   }
 )
 

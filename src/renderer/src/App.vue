@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetView from './PetView.vue'
 import PetSpritePlayer from './PetSpritePlayer.vue'
 import SettingsPanel from './SettingsPanel.vue'
@@ -42,6 +42,14 @@ const sendError = ref('')
 const isRoomOpen = ref(false)
 const isSettingsOpen = ref(false)
 const roomSpriteAvailable = ref(false)
+const characterScene = ref<HTMLElement>()
+const roomCharacterLayout = ref({
+  width: 600,
+  height: 712,
+  characterSize: 380,
+  footX: 370,
+  footY: 622
+})
 const currentRequestId = ref('')
 const providerSummary = ref<ProviderSummary>()
 const canSend = computed(() => draft.value.trim().length > 0 && !isThinking.value)
@@ -70,6 +78,40 @@ const closeRoom = async (): Promise<void> => {
 let removeOpenRoomListener: (() => void) | undefined
 let removeReturnToPetListener: (() => void) | undefined
 let removeDeltaListener: (() => void) | undefined
+let roomResizeObserver: ResizeObserver | undefined
+
+function updateRoomCharacterLayout(): void {
+  const scene = characterScene.value
+  if (!scene) return
+  const width = Math.max(360, Math.round(scene.clientWidth))
+  const height = Math.max(520, Math.round(scene.clientHeight))
+  const characterSize = Math.round(Math.min(540, Math.max(340, width * 0.68, height * 0.56)))
+  roomCharacterLayout.value = {
+    width,
+    height,
+    characterSize,
+    footX: Math.round(Math.min(width - 54, Math.max(width * 0.58, width - characterSize * 0.62))),
+    footY: height - 88
+  }
+}
+
+async function startRoomLayoutObserver(): Promise<void> {
+  await nextTick()
+  roomResizeObserver?.disconnect()
+  if (!characterScene.value) return
+  roomResizeObserver = new ResizeObserver(updateRoomCharacterLayout)
+  roomResizeObserver.observe(characterScene.value)
+  updateRoomCharacterLayout()
+}
+
+watch(
+  isRoomOpen,
+  (open) => {
+    if (open) void startRoomLayoutObserver()
+    else roomResizeObserver?.disconnect()
+  },
+  { flush: 'post' }
+)
 
 const providerStatus = computed(() => {
   if (!providerSummary.value?.apiKeyPresent) return '尚未配置模型'
@@ -122,6 +164,7 @@ onBeforeUnmount(() => {
   removeOpenRoomListener?.()
   removeReturnToPetListener?.()
   removeDeltaListener?.()
+  roomResizeObserver?.disconnect()
 })
 
 async function refreshProviderSummary(): Promise<void> {
@@ -240,16 +283,16 @@ async function sendMessage(): Promise<void> {
           <h2>晚上好，<br />要一起待一会儿吗？</h2>
           <p>此刻的澄夏：{{ companion.mood }}</p>
         </div>
-        <div class="character-scene" aria-label="角色展示占位">
+        <div ref="characterScene" class="character-scene" aria-label="角色展示占位">
           <div class="moon"></div>
           <div class="window-rain"></div>
           <PetSpritePlayer
             class="room-sprite-player"
-            :width="600"
-            :height="712"
-            :character-size="360"
-            :foot-x="350"
-            :foot-y="622"
+            :width="roomCharacterLayout.width"
+            :height="roomCharacterLayout.height"
+            :character-size="roomCharacterLayout.characterSize"
+            :foot-x="roomCharacterLayout.footX"
+            :foot-y="roomCharacterLayout.footY"
             @ready="roomSpriteAvailable = true"
             @unavailable="roomSpriteAvailable = false"
           />
