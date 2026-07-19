@@ -20,6 +20,7 @@ interface VirtualBondAPI {
   }
   skins: {
     list: () => Promise<SkinScanView>
+    loadAnimation: (skinId: string, action: string) => Promise<SkinAnimationAssetView>
     openUserDirectory: () => Promise<void>
   }
   character: {
@@ -112,6 +113,20 @@ interface SkinScanView {
     directoryName: string
     error: string
   }>
+}
+
+interface SkinAnimationAssetView {
+  skinId: string
+  action: string
+  mimeType: 'image/png'
+  bytes: Uint8Array
+  canvas: {
+    width: number
+    height: number
+    anchor: { x: number; y: number }
+    hitbox?: { x: number; y: number; width: number; height: number }
+  }
+  animation: SkinScanView['skins'][number]['manifest']['animations'][string]
 }
 
 type ProviderKind = 'openai' | 'anthropic' | 'gemini' | 'custom'

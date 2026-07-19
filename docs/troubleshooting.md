@@ -369,3 +369,15 @@ CCSwitch 当前 Codex 配置可由 Codex CLI 正常调用，但 Virtual Bond 使
 - 主进程先恢复桌宠窗口尺寸和缩放，再通知渲染层切换回桌宠视图。
 - 桌宠状态下关闭窗口仍然隐藏到托盘；彻底退出继续通过桌宠右键菜单或托盘菜单执行。
 - 同时上移角色主体并下移底部操作栏，给序列帧角色预留更清晰的交互间距。
+
+## 20. Electron IPC 字节数据不能直接作为浏览器 BlobPart
+
+### 现象
+
+主进程通过 IPC 返回 PNG 的 `Uint8Array` 后，运行时可以传输，但 TypeScript 将其底层缓冲区视为可能包含 `SharedArrayBuffer` 的 `ArrayBufferLike`，不能直接交给浏览器 `Blob` 构造器。
+
+### 解决方案
+
+- 渲染层先使用 `new Uint8Array(asset.bytes)` 复制 IPC 数据，取得普通 `ArrayBuffer` 后再创建临时 Blob URL。
+- PixiJS 只加载该临时 URL，主进程仍按已扫描的皮肤 ID 和动作名控制磁盘访问。
+- 动作切换和组件卸载时撤销旧 Blob URL，避免长时间运行产生资源泄漏。

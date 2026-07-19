@@ -36,6 +36,8 @@ const api = {
   },
   skins: {
     list: (): Promise<unknown> => ipcRenderer.invoke('skins:list'),
+    loadAnimation: (skinId: string, action: string): Promise<unknown> =>
+      ipcRenderer.invoke('skins:load-animation', skinId, action),
     openUserDirectory: (): Promise<void> => ipcRenderer.invoke('skins:open-user-directory')
   },
   character: {

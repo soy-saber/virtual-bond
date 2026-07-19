@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import PetSpritePlayer from './PetSpritePlayer.vue'
 
 const props = defineProps<{ name: string; mood: string }>()
 const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
 const isAwake = ref(false)
 const isDragging = ref(false)
 const showBubble = ref(true)
+const spriteAvailable = ref(false)
+const spritePlayer = ref<InstanceType<typeof PetSpritePlayer>>()
 const bubbleText = ref('晚上好，我在这里。')
 let removeSayListener: (() => void) | undefined
 
@@ -18,6 +21,7 @@ function say(message: string): void {
 function wake(): void {
   isAwake.value = true
   showBubble.value = true
+  void spritePlayer.value?.play('interaction')
   window.setTimeout(() => {
     isAwake.value = false
   }, 1800)
@@ -78,7 +82,17 @@ function showContextMenu(): void {
       </div>
 
       <div class="pet-aura"></div>
-      <div class="pet-character" :class="{ awake: isAwake }" :aria-label="`${props.name}桌宠`">
+      <PetSpritePlayer
+        ref="spritePlayer"
+        @ready="spriteAvailable = true"
+        @unavailable="spriteAvailable = false"
+      />
+      <div
+        v-show="!spriteAvailable"
+        class="pet-character"
+        :class="{ awake: isAwake }"
+        :aria-label="`${props.name}桌宠`"
+      >
         <div class="pet-hair pet-hair-back"></div>
         <div class="pet-ear left"></div>
         <div class="pet-ear right"></div>

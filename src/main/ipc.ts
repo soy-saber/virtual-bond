@@ -19,7 +19,8 @@ import {
   resetProviderSettings,
   saveProviderSettings
 } from './provider-settings'
-import { scanSkins } from './skin-loader'
+import { scanSkins, type SkinScanResult } from './skin-loader'
+import { loadSkinAnimationAsset } from './skin-assets'
 
 interface ActiveRequest {
   controller: AbortController
@@ -27,6 +28,21 @@ interface ActiveRequest {
 }
 
 const activeRequests = new Map<string, ActiveRequest>()
+
+function getSkinScanResult(): SkinScanResult {
+  return scanSkins([
+    { directory: join(process.resourcesPath, 'skins'), source: 'builtin' },
+    ...(app.isPackaged
+      ? []
+      : [
+          {
+            directory: join(app.getAppPath(), 'resources', 'skins'),
+            source: 'development' as const
+          }
+        ]),
+    { directory: join(app.getPath('userData'), 'skins'), source: 'user' }
+  ])
+}
 
 function requireShortString(value: unknown, label: string, maxLength: number): string {
   if (typeof value !== 'string') throw new Error(`${label}格式不正确`)
@@ -133,18 +149,7 @@ export function registerApplicationIpc(): void {
   })
   ipcMain.handle('settings:import-text', (_, text: string) => importProviderSettingsFromText(text))
   ipcMain.handle('skins:list', () => {
-    const result = scanSkins([
-      { directory: join(process.resourcesPath, 'skins'), source: 'builtin' },
-      ...(app.isPackaged
-        ? []
-        : [
-            {
-              directory: join(app.getAppPath(), 'resources', 'skins'),
-              source: 'development' as const
-            }
-          ]),
-      { directory: join(app.getPath('userData'), 'skins'), source: 'user' }
-    ])
+    const result = getSkinScanResult()
     return {
       skins: result.skins.map(({ source, manifest }) => ({ source, manifest })),
       invalid: result.invalid.map(({ source, directory, error }) => ({
@@ -153,6 +158,13 @@ export function registerApplicationIpc(): void {
         error
       }))
     }
+  })
+  ipcMain.handle('skins:load-animation', (_, rawSkinId: unknown, rawAction: unknown) => {
+    const skinId = requireShortString(rawSkinId, '皮肤 ID', 100)
+    const action = requireShortString(rawAction, '动作名', 100)
+    const skin = getSkinScanResult().skins.find((candidate) => candidate.manifest.id === skinId)
+    if (!skin) throw new Error('皮肤不存在或已失效')
+    return loadSkinAnimationAsset(skin, action)
   })
   ipcMain.handle('skins:open-user-directory', async () => {
     const directory = join(app.getPath('userData'), 'skins')
