@@ -33,9 +33,22 @@ Virtual Bond 将图片生成与普通对话 Provider 完全隔离。普通聊天
 - 播放器清单：`manifest.json`
 - 标准站姿、待机 Sheet 和 4K 优化中文 Prompt：`resources/prompts/reference-*.zh-CN.md`
 
-第一版低质量 Sheet 继承了参考图中的交叉腿和抬脚姿势，且八帧角色中心持续向左漂移。后续先固定标准站姿，再按 Alpha 包围盒统一水平中心和脚底坐标。当前待机不再让模型重绘八次全身，而是从同一张标准角色图生成八帧：腰部以下逐像素锁定，只对胸肩以上施加最大约 `1.1%` 的纵向呼吸形变。
+第一版低质量 Sheet 继承了参考图中的交叉腿和抬脚姿势，且八帧角色中心持续向左漂移。后续先固定标准站姿，再按 Alpha 包围盒统一水平中心和脚底坐标。当前待机不再让模型重绘八次全身，而是由 4K 母版本地生成八帧：骨盆、腰部以下和脚底保持锚定，胸肩源帧最大纵向位移约 `5` 像素；空间权重使用上胸峰值、向腰部缓慢衰减的非对称曲线，避免运动中心落到下腹。头颈以胸肩 `25%` 为基础，并设置 `3` 个源像素的最小可见下限，滞后约 `0.75` 帧跟随；缩到桌宠画布后峰值约 `0.75` 逻辑像素。
 
-当前播放 Sheet 为 `4096 × 2048`，每帧 `1024 × 1024`。4K 母版为原生 `2160 × 3840` RGBA PNG，已经完成色键移除和透明边角校验；下一轮待机优化将以该母版为细节来源，不把普通插值放大描述为 4K 生图。
+当前播放 Sheet 为 `4096 × 2048`，每帧 `1024 × 1024`。4K 母版为原生 `2160 × 3840` RGBA PNG，已经完成色键移除和透明边角校验；运行时帧通过预乘 Alpha 的 Lanczos 缩小从该母版导出，避免透明边缘颜色渗漏，也不把普通插值放大描述为 4K 生图。
+
+待机节奏按静息呼吸资料收敛：Cleveland Clinic 给出的成人静息呼吸范围为每分钟 `12–18` 次；当前 8 帧以 `2 FPS` 播放，一轮约 `4` 秒，即每分钟约 `15` 次。超声研究中安静呼吸的膈肌位移约 `1.7–2.35 cm`，明显低于深呼吸约 `4.1–5.54 cm`，因此动画只采用克制的胸肩形变，不表现为整个人上下起伏。生理厘米数据仅用于判断节奏与相对幅度，不直接映射为屏幕像素。
+
+参考资料：
+
+- [Cleveland Clinic：Vital Signs](https://my.clevelandclinic.org/health/articles/10881-vital-signs)
+- [Yamada et al., 2024, PMID 38019290](https://pubmed.ncbi.nlm.nih.gov/38019290/)
+- [Kabil et al., 2022, PMID 35756096](https://pubmed.ncbi.nlm.nih.gov/35756096/)
+- [Clavel et al., 2020, PMID 32185476](https://pubmed.ncbi.nlm.nih.gov/32185476/)
+- [Lespert et al., 2023, PMID 37906488](https://pubmed.ncbi.nlm.nih.gov/37906488/)
+- [Gwak et al., 2023, PMID 38082888](https://pubmed.ncbi.nlm.nih.gov/38082888/)
+
+本地重建命令：`python scripts/build-reference-idle.py`。脚本只读取仓库内 4K 母版并写入 Sheet，不访问网络，不消耗生图 Token；运行环境需要 Pillow 和 NumPy。
 
 ## 1K 模板到 4K 优化流程
 

@@ -64,6 +64,7 @@ skins/
 - 仓库包含首套 `reference-companion` 开发皮肤，可直接验证 PixiJS 播放和 CSS 降级切换。
 - Electron 严格 CSP 环境通过 PixiJS 官方静态同步兼容模块初始化，不放宽页面安全策略。
 - 桌宠和陪伴空间通过同一播放器加载同一个皮肤动作，仅使用不同画布尺寸、角色比例和脚底位置。
+- PixiJS 画布根据设备像素比使用 3×–4× 的内部渲染分辨率，纹理使用线性采样、自动 mipmap 和像素对齐，降低页面缩放和大尺寸显示时的轮廓锯齿与闪烁。
 - AI 生成帧会在透明化后按角色包围盒统一水平中心与脚底坐标，避免锚点漂移被误认为行走。
 
 尚未完成：
@@ -87,7 +88,7 @@ skins/
 
 图片生成结果不能直接视为可信资源。后续播放器和皮肤工具仍需读取实际 PNG 尺寸并校验 Sheet 布局。
 
-首套参考图测试皮肤先使用 [`resources/prompts/reference-neutral-character.zh-CN.md`](../resources/prompts/reference-neutral-character.zh-CN.md) 生成正常站立的标准角色参考，再使用 [`resources/prompts/reference-idle-sprite-sheet.zh-CN.md`](../resources/prompts/reference-idle-sprite-sheet.zh-CN.md) 验证动作模板。正式待机从单一角色参考生成，锁定下半身并只对上半身施加微幅呼吸形变，输出为 `4 × 2`、每帧 `1024 × 1024` 的透明 Sheet。
+首套参考图测试皮肤先使用 [`resources/prompts/reference-neutral-character.zh-CN.md`](../resources/prompts/reference-neutral-character.zh-CN.md) 生成正常站立的标准角色参考，再使用 [`resources/prompts/reference-idle-sprite-sheet.zh-CN.md`](../resources/prompts/reference-idle-sprite-sheet.zh-CN.md) 验证动作模板。正式待机由仓库内 4K 母版本地重导出，锁定骨盆、下半身和脚底：胸肩最大形变约 5 像素，权重峰值位于上胸并向腰部逐渐衰减；头颈保留胸肩 25% 的基础比例，但设置 3 个源像素的最小可见下限，并滞后约 0.75 帧跟随。缩到桌宠画布后头部峰值约 0.75 逻辑像素，颈肩之间平滑过渡。输出为 `4 × 2`、每帧 `1024 × 1024` 的透明 Sheet。可运行 `python scripts/build-reference-idle.py` 重建，不调用图片生成 API。
 
 标准制作流程为：1K 动作模板验收 → 最高 4K 的高分辨率主素材 → 锚点与非动作区域约束 → 1024/512/256 多档运行时导出。完整流程与当前 Provider 限制见 [`image-generation.md`](image-generation.md)。
 

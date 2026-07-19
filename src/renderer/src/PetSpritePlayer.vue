@@ -19,7 +19,9 @@ const props = withDefaults(
     footY: 350
   }
 )
-const emit = defineEmits<{ ready: []; unavailable: [] }>()
+type SpriteHitbox = { left: number; top: number; width: number; height: number }
+
+const emit = defineEmits<{ ready: [hitbox: SpriteHitbox]; unavailable: [] }>()
 const host = ref<HTMLDivElement>()
 let app: Application | undefined
 let isInitialized = false
@@ -36,7 +38,11 @@ async function play(requestedAction: string): Promise<boolean> {
     const nextUrl = URL.createObjectURL(
       new Blob([new Uint8Array(asset.bytes).buffer], { type: asset.mimeType })
     )
-    const baseTexture = await Assets.load<Texture>({ src: nextUrl, parser: 'texture' })
+    const baseTexture = await Assets.load<Texture>({
+      src: nextUrl,
+      parser: 'texture',
+      data: { scaleMode: 'linear', autoGenerateMipmaps: true }
+    })
     if (sequence !== loadSequence || !app) {
       URL.revokeObjectURL(nextUrl)
       return false
@@ -66,6 +72,7 @@ async function play(requestedAction: string): Promise<boolean> {
     )
     sprite.scale.set(scale)
     sprite.position.set(props.footX, props.footY)
+    sprite.roundPixels = true
     sprite.loop = asset.animation.loop
     sprite.animationSpeed = asset.animation.fps / 60
     sprite.onComplete = () => {
@@ -76,7 +83,18 @@ async function play(requestedAction: string): Promise<boolean> {
     sprite.play()
     if (objectUrl) URL.revokeObjectURL(objectUrl)
     objectUrl = nextUrl
-    emit('ready')
+    const hitbox = asset.canvas.hitbox ?? {
+      x: 0,
+      y: 0,
+      width: asset.canvas.width,
+      height: asset.canvas.height
+    }
+    emit('ready', {
+      left: props.footX + (hitbox.x - asset.canvas.anchor.x) * scale,
+      top: props.footY + (hitbox.y - asset.canvas.anchor.y) * scale,
+      width: hitbox.width * scale,
+      height: hitbox.height * scale
+    })
     return true
   } catch (error) {
     console.warn(`无法播放皮肤动作 ${requestedAction}`, error)
@@ -91,12 +109,15 @@ defineExpose({ play })
 onMounted(async () => {
   if (!host.value) return
   try {
+    const renderResolution = Math.min(4, Math.max(3, window.devicePixelRatio * 1.5))
     app = new Application()
     await app.init({
       width: props.width,
       height: props.height,
       backgroundAlpha: 0,
-      antialias: true
+      antialias: true,
+      autoDensity: true,
+      resolution: renderResolution
     })
     isInitialized = true
     host.value.appendChild(app.canvas)
