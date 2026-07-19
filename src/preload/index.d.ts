@@ -20,7 +20,18 @@ interface VirtualBondAPI {
   }
   conversation: {
     list: (characterId: string) => Promise<MessageRecord[]>
-    send: (characterId: string, content: string) => Promise<SendMessageResult>
+    send: (requestId: string, characterId: string, content: string) => Promise<SendMessageResult>
+    stop: (requestId: string) => Promise<boolean>
+    onDelta: (listener: (payload: ConversationDelta) => void) => () => void
+  }
+  settings: {
+    get: () => Promise<ProviderSettingsView>
+    save: (settings: ProviderSettingsDraft) => Promise<ProviderSettingsView>
+    clearApiKey: () => Promise<ProviderSettingsView>
+    reset: () => Promise<ProviderSettingsView>
+    export: () => Promise<string>
+    importCcswitch: (preferredProvider?: ProviderKind) => Promise<ProviderSettingsView>
+    importText: (text: string) => Promise<ProviderSettingsView>
   }
 }
 
@@ -39,12 +50,45 @@ interface MessageRecord {
   characterId: string
   role: 'companion' | 'user'
   content: string
+  status: 'completed' | 'sending' | 'stopped' | 'failed'
+  error: string | null
   createdAt: string
+  updatedAt: string
 }
 
 interface SendMessageResult {
   userMessage: MessageRecord
   companionMessage: MessageRecord
+  status: 'completed' | 'stopped' | 'failed'
+  error?: string
+}
+
+interface ConversationDelta {
+  requestId: string
+  delta: string
+}
+
+type ProviderKind = 'openai' | 'anthropic' | 'gemini' | 'custom'
+
+interface ProviderSettingsDraft {
+  provider: ProviderKind
+  name: string
+  baseUrl: string
+  model: string
+  systemPrompt: string
+  apiKey?: string
+}
+
+interface ProviderSettingsView {
+  provider: ProviderKind
+  name: string
+  baseUrl: string
+  model: string
+  systemPrompt: string
+  source: string
+  updatedAt: string
+  apiKeyPresent: boolean
+  apiKeyHint: string
 }
 
 declare global {

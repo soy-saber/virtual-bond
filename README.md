@@ -2,23 +2,64 @@
 
 AI 驱动的桌面陪伴应用。项目希望建立一种平等、持续、可沉淀记忆的数字伙伴关系，而不只是一个会弹出对话框的桌宠。
 
-## 当前进度
+## 项目状态
 
-项目处于 `0.1.0` 原型阶段，目前包含：
+当前版本为 `0.1.0`，处于桌面原型阶段。桌面应用壳、双模式窗口、本地对话持久化和真实流式 AI 对话已经可用，角色动画和长期记忆仍在开发计划中。
+
+### 已实现
 
 - Electron 透明无边框桌面窗口
-- 可拖拽、置顶并记忆桌面位置的悬浮桌宠
+- 可拖拽、置顶并记忆位置的悬浮桌宠
 - 桌宠与完整陪伴空间双模式切换
-- 系统托盘、右键菜单与 `Ctrl+Shift+B` 显示/隐藏快捷键
+- 系统托盘、右键菜单和 `Ctrl+Shift+B` 显示/隐藏快捷键
+- 单实例运行和关闭后驻留托盘
 - Vue 3 + TypeScript 陪伴空间界面
-- 基础对话交互与本地演示响应
-- 安全的 preload / IPC 窗口控制
-- 为 PixiJS、SQLite 与 OpenAI Provider 预留的依赖和架构入口
+- SQLite 角色、对话和应用设置持久化
+- 默认角色“澄夏”和真实流式对话
+- OpenAI Responses、Claude、Gemini 和自定义 OpenAI 兼容 API
+- Electron `safeStorage` 加密密钥与模型设置界面
+- CCSwitch 当前配置、分享链接和复制 JSON 导入
+- 停止生成、超时以及常见 API 错误提示
+- 基于 context isolation、preload 和 IPC 的受控桌面 API
+- Windows、macOS 和 Linux 打包配置
+
+### 尚未实现
+
+- 可编辑角色人设、世界观与对话风格
+- PixiJS sprite sheet 角色动画
+- 长期记忆检索、对话总结和关系成长
+- 共同记忆、日常记录、衣橱、签到和轻量玩法
+- 更完整的 Provider / IPC 测试覆盖和正式自动更新
+
+## 当前架构
+
+```text
+src/
+├─ main/
+│  ├─ index.ts       # Electron 窗口、托盘、快捷键和桌宠拖拽
+│  ├─ database.ts    # Electron 数据库入口
+│  ├─ database-core.ts     # SQLite 迁移、角色、对话和设置
+│  ├─ chat-provider.ts      # 多 Provider 流式模型调用
+│  ├─ provider-settings.ts  # 加密密钥、设置和 CCSwitch 导入
+│  └─ ipc.ts                # 主进程业务 IPC
+├─ preload/
+│  ├─ index.ts       # 暴露给渲染进程的受控 API
+│  └─ index.d.ts     # API 类型声明
+└─ renderer/
+   └─ src/
+      ├─ App.vue     # 陪伴空间和对话界面
+      ├─ PetView.vue # 悬浮桌宠界面
+      └─ SettingsPanel.vue # 模型设置界面
+```
+
+主进程拥有窗口、数据库、密钥和模型调用能力；渲染进程只通过 preload 暴露的 API 调用这些能力。用户消息和完成或主动停止后的伙伴回复会写入 SQLite。
 
 ## 开发
 
+建议使用 Node.js LTS。
+
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -26,16 +67,149 @@ npm run dev
 
 ```bash
 npm run typecheck
+npm test
 npm run lint
 npm run build
 ```
 
+一次运行全部检查：
+
+```bash
+npm run check
+```
+
+打包：
+
+```bash
+npm run build:win
+npm run build:mac
+npm run build:linux
+```
+
+如果 Electron 二进制下载超时，可以临时配置镜像后重新安装：
+
+```powershell
+$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
+npm ci
+```
+
 完整技术选型见 [`docs/tech-stack.md`](docs/tech-stack.md)。
 
-## 路线图
+本轮开发中遇到的环境、Electron、SQLite、CCSwitch、流式 IPC 和密钥安全问题，见 [`docs/troubleshooting.md`](docs/troubleshooting.md)。
 
-1. SQLite 数据模型与对话持久化
-2. OpenAI / Claude Provider 与加密密钥存储
-3. PixiJS sprite sheet 角色动画
-4. RAG 长期记忆与关系成长系统
-5. 衣橱、签到及轻量互动玩法
+## 开发计划
+
+计划按“先完成可用对话闭环，再增加表现和长期关系能力”的顺序推进。
+
+### `0.2.0`：真实 AI 对话闭环
+
+目标：让用户配置自己的 API Key，并与澄夏进行真实、流式、可恢复的模型对话。
+
+- [x] 定义统一的流式 Provider 调用层
+- [x] 支持 OpenAI Responses、Claude、Gemini 和自定义 OpenAI 兼容 API
+- [x] 使用 Electron `safeStorage` 加密保存 API Key
+- [x] 增加模型、API 地址和角色附加指令设置
+- [x] 支持流式回复、停止生成和超时
+- [x] 组装最近对话和角色状态作为模型上下文
+- [x] 增加有限自动重试和可持久化的消息状态
+
+验收标准：
+
+- 用户不需要修改源码即可配置模型
+- 发送消息后可以实时看到流式回复
+- 应用重启后能继续已有对话
+- Key 缺失、网络失败和接口限流都有明确提示
+- API Key 不以明文写入数据库或日志
+
+### `0.3.0`：数据可靠性与工程基础
+
+目标：为后续记忆、角色和玩法功能建立可升级、可测试的数据层。
+
+- [x] 实现真正的数据库版本迁移
+- [x] 增加 IPC 参数校验和消息长度限制
+- [x] 将消息写入、回复状态更新设计为可恢复流程
+- [x] 拆分 Provider、数据库、对话和设置模块
+- [x] 增加数据库迁移与消息状态单元测试
+- [x] 增加 GitHub Actions
+- [x] 统一 Git 换行符与 Prettier 配置
+- [ ] 增加 Provider 单元测试和关键 IPC 集成测试
+
+验收标准：
+
+- 旧版本数据库可以无损升级
+- AI 请求中断后不会留下无法处理的半成品数据
+- 核心数据层和 IPC 有自动化测试保护
+- Typecheck、Lint、测试和构建可在 CI 中通过
+
+### `0.4.0`：角色视觉与状态
+
+目标：用真实角色素材替换 CSS 占位角色，让桌宠状态能响应对话和系统事件。
+
+- 建立 PixiJS 角色渲染组件
+- 定义 `idle`、`talk`、`happy`、`sleep` 等动画状态
+- 加载 sprite sheet 和动画清单
+- 将角色状态与对话、时间和桌宠交互关联
+- 增加素材加载失败时的降级界面
+- 评估服装和角色资源包格式
+
+验收标准：
+
+- 桌宠和陪伴空间使用同一套角色状态模型
+- 动画切换不会导致窗口跳动或明显性能下降
+- 素材损坏或缺失时应用仍可进入对话
+
+### `0.5.0`：长期记忆与关系成长
+
+目标：让伙伴能够沉淀可解释、可管理的长期记忆，而不是无限拼接聊天记录。
+
+- 提取用户偏好、人物、事件和约定
+- 对较长对话进行分段总结
+- 增加记忆查看、修改、删除和禁用能力
+- 优先使用 SQLite 实现记忆存储和检索
+- 在数据规模和召回需求明确后再决定是否引入向量数据库
+- 使用关系事件记录驱动纽带等级与经验
+
+验收标准：
+
+- 伙伴能在后续对话中引用经过确认的重要信息
+- 用户可以知道某条记忆来自哪里并进行管理
+- 删除记忆后不会继续进入模型上下文
+- 关系成长由可追溯事件计算，而不是硬编码数值
+
+### `1.0.0`：完整体验与发布
+
+目标：完成可分发、可升级、可维护的第一个正式版本。
+
+- 实现共同记忆、日常记录、签到和轻量互动
+- 实现衣橱和角色资源管理
+- 增加数据导入、导出和彻底删除
+- 完善隐私说明、首次启动和故障恢复
+- 完成 Windows 安装包和自动更新
+- 验证多显示器、高 DPI、休眠恢复和长时间运行
+- 根据维护能力再扩展 macOS 和 Linux 发布
+
+验收标准：
+
+- 新用户可以独立完成安装、模型配置和首次对话
+- 更新应用不会丢失角色、设置、对话和记忆
+- 核心功能在离线或服务不可用时能明确降级
+- 用户可以完整导出或删除自己的本地数据
+
+## 当前优先级
+
+接下来应依次完成：
+
+1. Provider 单元测试和关键 IPC 集成测试
+2. 可编辑角色人设和对话风格
+3. PixiJS 角色动画
+4. 长期记忆与关系成长
+5. Claude / OpenCode CLI Agent 能力评估
+
+在真实对话闭环稳定之前，暂不优先开发生图、衣橱和小游戏，避免在核心陪伴体验尚未成立时扩大功能面。
+
+## 已知工程问题
+
+- 历史 Windows 检出文件可能仍保留 CRLF；新检出由 `.gitattributes` 统一为 LF
+- 项目路径包含空格时，`better-sqlite3` 原生重建可能产生 `node-gyp` 警告
+- 当前完整陪伴空间可能继续保持始终置顶，需要进一步确认交互预期
+- Provider 和 IPC 自动化覆盖仍不完整，模型调用需要按实际服务手工回归
