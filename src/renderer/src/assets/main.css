@@ -21,10 +21,16 @@ button {
 .pet-drag-surface {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+}
+.pet-model-hit-area {
+  position: absolute;
+  z-index: 7;
   cursor: grab;
   touch-action: none;
+  pointer-events: auto;
 }
-.pet-drag-surface:active {
+.pet-model-hit-area:active {
   cursor: grabbing;
 }
 .pet-bubble {
@@ -52,6 +58,16 @@ button {
 .pet-bubble small {
   color: #aaa1c1;
   font-size: 9px;
+}
+.pet-bubble-leave-active {
+  animation: none;
+  transition:
+    opacity 0.45s ease,
+    transform 0.45s ease;
+}
+.pet-bubble-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -7px) scale(0.98);
 }
 .pet-aura {
   position: absolute;

@@ -23,7 +23,7 @@ const POSITION_SETTING = 'window.petBounds'
 const SCALE_SETTING = 'window.petScale'
 const DEFAULT_PET_SCALE = 0.75
 const MIN_PET_SCALE = 0.45
-const MAX_PET_SCALE = 1.2
+const MAX_PET_SCALE = 1.8
 
 let mainWindow: BrowserWindow | undefined
 let tray: Tray | undefined
@@ -116,6 +116,7 @@ function sendPetGreeting(): void {
 
 function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   if (mode === currentMode) return
+  window.setIgnoreMouseEvents(false)
 
   if (mode === 'room') {
     persistPetBounds()
@@ -302,9 +303,16 @@ app.whenReady().then(() => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (window) createContextMenu().popup({ window })
   })
+  ipcMain.on('window:set-mouse-passthrough', (event, enabled: unknown) => {
+    const window = BrowserWindow.fromWebContents(event.sender)
+    if (!window || currentMode !== 'pet') return
+    const shouldIgnore = enabled === true
+    window.setIgnoreMouseEvents(shouldIgnore, shouldIgnore ? { forward: true } : undefined)
+  })
   ipcMain.on('window:drag-start', (event) => {
     const window = BrowserWindow.fromWebContents(event.sender)
     if (!window || currentMode !== 'pet') return
+    window.setIgnoreMouseEvents(false)
     const [windowX, windowY] = window.getPosition()
     const cursor = screen.getCursorScreenPoint()
     dragOrigin = { mouseX: cursor.x, mouseY: cursor.y, windowX, windowY }

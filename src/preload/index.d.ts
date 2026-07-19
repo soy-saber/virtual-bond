@@ -9,6 +9,7 @@ interface VirtualBondAPI {
     getPetScale: () => Promise<number>
     setPetScale: (scale: number) => Promise<number>
     showContextMenu: () => void
+    setMousePassthrough: (enabled: boolean) => void
     beginDrag: () => void
     dragTo: () => void
     endDrag: () => void

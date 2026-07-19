@@ -12,6 +12,8 @@ const api = {
     setPetScale: (scale: number): Promise<number> =>
       ipcRenderer.invoke('window:set-pet-scale', scale),
     showContextMenu: (): void => ipcRenderer.send('window:show-context-menu'),
+    setMousePassthrough: (enabled: boolean): void =>
+      ipcRenderer.send('window:set-mouse-passthrough', enabled),
     beginDrag: (): void => ipcRenderer.send('window:drag-start'),
     dragTo: (): void => ipcRenderer.send('window:drag-move'),
     endDrag: (): void => ipcRenderer.send('window:drag-end')
