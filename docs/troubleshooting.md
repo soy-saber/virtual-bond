@@ -299,3 +299,33 @@ npm run check
 4. Electron 生产构建
 
 涉及 Electron 启动逻辑时，再进行短时间启动冒烟测试，确认进程持续运行且标准错误为空。实际模型连通测试可能产生 API 费用，应由用户明确触发，不应在普通构建验证中自动发送请求。
+
+## 15. Codex 中转的 Responses 请求不一定等同于通用 OpenAI Responses
+
+### 现象
+
+CCSwitch 当前 Codex 配置可由 Codex CLI 正常调用，但 Virtual Bond 使用 OpenAI SDK 的通用 Responses 请求时，中转服务返回 `400 invalid codex request`。
+
+### 原因与处理
+
+- 已确认地址、网络、模型和凭据均有效，失败发生在协议兼容层。
+- 该中转可能校验 Codex CLI 专用请求头或额外请求体字段，不能仅凭字段名称猜测后直接应用到所有 OpenAI Provider。
+- 当前保留标准 OpenAI Responses 实现；需要兼容此类 Codex 专用中转时，应增加独立协议选项，并通过脱敏代理捕获请求结构后再实现。
+- 自定义 OpenAI-compatible 服务继续使用 `/chat/completions`，避免受 Codex Responses 私有约束影响。
+
+安全提醒：诊断命令不得输出 Authorization、提示正文或 CCSwitch 中的认证字段值。如果凭据曾进入终端或会话输出，应立即轮换。
+
+## 16. 使用本机 DeepSeek Key 进行真实链路验证
+
+### 约定
+
+本地测试凭据位于用户指定的 `C:\Users\walex\Desktop\key\key.txt`。它只允许在临时测试程序运行时读取：
+
+- 不复制进项目目录。
+- 不写入源码、文档、测试快照或 Git 历史。
+- 不打印 Key、末尾字符或模型回复正文。
+- 测试使用隔离的临时 Electron `userData` 目录，结束后删除测试数据库。
+
+### 2026-07-19 实机结果
+
+通过 `custom` Provider 调用 DeepSeek 的 OpenAI-compatible Chat Completions 流式接口，验证了安全存储、真实网络请求、流式增量和 SQLite 状态更新。结果为 4 个文本增量，回复非空，最终消息状态为 `completed`。
