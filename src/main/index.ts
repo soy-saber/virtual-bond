@@ -14,11 +14,13 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { closeDatabase, getSetting, initializeDatabase, setSetting } from './database'
 import { registerApplicationIpc } from './ipc'
+import { calculateRoomWindowLayout, type RoomWindowLayout } from './window-layout'
 
 type WindowMode = 'pet' | 'room'
 
 const PET_BASE_SIZE = { width: 360, height: 440 }
 const ROOM_SIZE = { width: 1180, height: 760 }
+const ROOM_MIN_SIZE = { width: 920, height: 640 }
 const POSITION_SETTING = 'window.petBounds'
 const SCALE_SETTING = 'window.petScale'
 const DEFAULT_PET_SCALE = 0.75
@@ -114,6 +116,11 @@ function sendPetGreeting(): void {
   mainWindow?.webContents.send('pet:say', '我在。刚刚好像听见你叫我了。')
 }
 
+function getRoomLayout(window: BrowserWindow): RoomWindowLayout {
+  const workArea = screen.getDisplayMatching(window.getBounds()).workArea
+  return calculateRoomWindowLayout(workArea, ROOM_SIZE, ROOM_MIN_SIZE)
+}
+
 function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   if (mode === currentMode) return
   window.setIgnoreMouseEvents(false)
@@ -124,10 +131,10 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
     window.webContents.setZoomFactor(1)
     window.setResizable(true)
     window.setSkipTaskbar(false)
-    window.setMinimumSize(920, 640)
     window.setMaximumSize(10_000, 10_000)
-    window.setSize(ROOM_SIZE.width, ROOM_SIZE.height, true)
-    window.center()
+    const roomLayout = getRoomLayout(window)
+    window.setMinimumSize(roomLayout.minimumSize.width, roomLayout.minimumSize.height)
+    window.setBounds(roomLayout.bounds, true)
     return
   }
 

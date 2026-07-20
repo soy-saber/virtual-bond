@@ -63,9 +63,9 @@ const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
 const closeWindow = (): Promise<void> => window.api.window.close()
 const openRoom = async (): Promise<void> => {
-  isRoomOpen.value = true
   try {
     await window.api.window.setMode('room')
+    isRoomOpen.value = true
   } catch (error) {
     isRoomOpen.value = false
     console.error('无法进入陪伴空间', error)

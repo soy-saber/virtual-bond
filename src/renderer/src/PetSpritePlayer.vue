@@ -152,6 +152,7 @@ onMounted(async () => {
       autoDensity: true,
       resolution: renderResolution
     })
+    app.renderer.resize(props.width, props.height)
     isInitialized = true
     host.value.appendChild(app.canvas)
     const initialSkinId = props.skinId?.trim() || (await window.api.skins.list()).selectedSkinId
