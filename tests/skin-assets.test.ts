@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import { readPngDimensions, validateSpriteSheet } from '../src/main/skin-assets'
-import type { SkinAnimation } from '../src/main/skin-loader'
+import { loadSkinManifest, type SkinAnimation } from '../src/main/skin-loader'
 
 function pngHeader(width: number, height: number): Uint8Array {
   const bytes = new Uint8Array(24)
@@ -34,4 +36,19 @@ test('reads PNG dimensions and validates a multi-row sprite sheet', () => {
 test('rejects invalid PNG data and mismatched sprite sheet dimensions', () => {
   assert.throws(() => readPngDimensions(new Uint8Array(24)), /PNG/)
   assert.throws(() => validateSpriteSheet({ width: 1024, height: 512 }, animation), /实际尺寸/)
+})
+
+test('validates every bundled reference companion animation against its manifest', () => {
+  const skinDirectory = resolve('resources/skins/reference-companion')
+  const manifest = loadSkinManifest(skinDirectory)
+  assert.deepEqual(Object.keys(manifest.animations).sort(), [
+    'dragging',
+    'idle',
+    'interaction',
+    'speaking'
+  ])
+  for (const animation of Object.values(manifest.animations)) {
+    const bytes = readFileSync(resolve(skinDirectory, animation.file))
+    assert.doesNotThrow(() => validateSpriteSheet(readPngDimensions(bytes), animation))
+  }
 })
