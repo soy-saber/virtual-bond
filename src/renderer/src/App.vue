@@ -284,8 +284,19 @@ async function sendMessage(): Promise<void> {
           <p>此刻的澄夏：{{ companion.mood }}</p>
         </div>
         <div ref="characterScene" class="character-scene" aria-label="角色展示占位">
-          <div class="moon"></div>
-          <div class="window-rain"></div>
+          <div class="study-window" aria-hidden="true">
+            <div class="moon"></div>
+            <div class="city-lights"><i v-for="index in 18" :key="index"></i></div>
+            <div class="window-rain"></div>
+            <span class="window-frame vertical"></span>
+            <span class="window-frame horizontal"></span>
+          </div>
+          <div class="study-shelf" aria-hidden="true">
+            <i v-for="index in 9" :key="index"></i>
+          </div>
+          <div class="study-lamp" aria-hidden="true"><i></i></div>
+          <div class="reading-chair" aria-hidden="true"><i></i><span></span></div>
+          <div class="study-rug" aria-hidden="true"></div>
           <PetSpritePlayer
             class="room-sprite-player"
             :width="roomCharacterLayout.width"
@@ -300,6 +311,13 @@ async function sendMessage(): Promise<void> {
             <span class="hair"></span><span class="face"></span><span class="body"></span>
           </div>
           <div class="scene-floor"></div>
+          <div class="foreground-desk" aria-hidden="true">
+            <span class="book book-back"></span><span class="book book-front"></span>
+            <span class="tea-cup"><i></i></span>
+          </div>
+          <div class="foreground-plant" aria-hidden="true">
+            <i></i><i></i><i></i><i></i><span></span>
+          </div>
         </div>
         <div class="quick-actions">
           <button>☕ 分享此刻</button><button>◈ 今日签到</button><button>⌁ 猜个词</button>

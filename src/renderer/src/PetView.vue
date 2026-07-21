@@ -13,6 +13,7 @@ const modelHitArea = ref<HTMLElement>()
 const controls = ref<HTMLElement>()
 const dismissButton = ref<HTMLButtonElement>()
 const spriteHitbox = ref({ left: 143, top: 110, width: 74, height: 240 })
+const petScale = ref(0.75)
 const bubbleText = ref('')
 let removeSayListener: (() => void) | undefined
 let mousePassthrough = false
@@ -25,6 +26,16 @@ const modelHitboxStyle = computed(() => {
     top: `${spriteHitbox.value.top - padding}px`,
     width: `${spriteHitbox.value.width + padding * 2}px`,
     height: `${spriteHitbox.value.height + padding * 2}px`
+  }
+})
+
+const controlsStyle = computed(() => {
+  const scale = Math.max(0.45, petScale.value)
+  const visualScale = Math.min(1.1, Math.max(0.72, scale))
+  const characterBottom = spriteHitbox.value.top + spriteHitbox.value.height
+  return {
+    top: `${characterBottom + 18 / scale}px`,
+    transform: `translateX(-50%) scale(${visualScale / scale})`
   }
 })
 
@@ -99,6 +110,7 @@ function shareMoment(): void {
 onMounted(() => {
   removeSayListener = window.api.pet.onSay(say)
   document.addEventListener('mousemove', syncMousePassthrough, { passive: true })
+  void loadPetScale()
 })
 
 onBeforeUnmount(() => {
@@ -140,6 +152,14 @@ function endDrag(event: PointerEvent): void {
 
 function showContextMenu(): void {
   window.api.window.showContextMenu()
+}
+
+async function loadPetScale(): Promise<void> {
+  try {
+    petScale.value = await window.api.window.getPetScale()
+  } catch {
+    // Keep the default layout if the main process is not ready yet.
+  }
 }
 </script>
 
@@ -193,7 +213,7 @@ function showContextMenu(): void {
       <div class="pet-shadow"></div>
     </div>
 
-    <div ref="controls" class="pet-controls no-drag">
+    <div ref="controls" class="pet-controls no-drag" :style="controlsStyle">
       <button title="回应一下" @click="wake">✦</button>
       <button title="分享此刻" @click="shareMoment">☕</button>
       <button title="打开陪伴空间" class="open-room" @click="openRoom">
