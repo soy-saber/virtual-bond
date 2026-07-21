@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import 'pixi.js/unsafe-eval'
-import { Application, Container, FederatedPointerEvent, Graphics, Rectangle, Text } from 'pixi.js'
+import {
+  Application,
+  Container,
+  FederatedPointerEvent,
+  Graphics,
+  Rectangle,
+  Text,
+  type Ticker
+} from 'pixi.js'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import {
   ACTION_LABELS,
@@ -57,6 +65,9 @@ let lastAction: RoomAction | undefined
 let elapsed = 0
 let ambientDueAt = 0
 let ambientEndsAt = 0
+let tickerUpdate: ((ticker: Ticker) => void) | undefined
+let isInitialized = false
+let isDisposed = false
 
 function panel(x: number, y: number, width: number, height: number, color: number): Graphics {
   return new Graphics()
@@ -590,8 +601,9 @@ function updateAmbient(now: number, snapshot: RoomCharacterSnapshot): void {
 
 onMounted(async () => {
   if (!host.value) return
-  app = new Application()
-  await app.init({
+  const nextApp = new Application()
+  app = nextApp
+  await nextApp.init({
     width: props.width,
     height: props.height,
     backgroundAlpha: 0,
@@ -599,18 +611,25 @@ onMounted(async () => {
     autoDensity: true,
     resolution: Math.min(2, window.devicePixelRatio || 1)
   })
-  host.value.appendChild(app.canvas)
+  if (isDisposed || !host.value) {
+    nextApp.destroy({ removeView: true })
+    if (app === nextApp) app = undefined
+    return
+  }
+  isInitialized = true
+  host.value.appendChild(nextApp.canvas)
   world = buildWorld()
-  app.stage.addChild(world)
+  nextApp.stage.addChild(world)
   updateViewport()
   machine.requestContext(props.context)
   machine.setConversationState(props.conversationState)
   scheduleNextAmbient()
-  app.ticker.add((ticker) => {
+  tickerUpdate = (ticker): void => {
     const snapshot = machine.update(ticker.deltaMS)
     updateAmbient(Date.now(), snapshot)
     applyCharacterState(snapshot, ticker.deltaMS)
-  })
+  }
+  nextApp.ticker.add(tickerUpdate)
   resizeObserver = new ResizeObserver(updateViewport)
   resizeObserver.observe(host.value)
   emit('ready')
@@ -635,8 +654,20 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  isDisposed = true
   resizeObserver?.disconnect()
-  app?.destroy(true, { children: true })
+  resizeObserver = undefined
+  const currentApp = app
+  app = undefined
+  if (!currentApp || !isInitialized) return
+  currentApp.ticker.stop()
+  if (tickerUpdate) currentApp.ticker.remove(tickerUpdate)
+  tickerUpdate = undefined
+  currentApp.stage.removeChildren()
+  currentApp.destroy({ removeView: true })
+  isInitialized = false
+  world = undefined
+  character = undefined
 })
 </script>
 

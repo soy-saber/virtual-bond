@@ -28,7 +28,8 @@ const petScale = ref(0.75)
 const skinScan = ref<SkinScanResultView>()
 const selectedSkinId = ref('')
 const previewSkinId = ref('')
-const skinPreviewAvailable = ref(false)
+type SkinPreviewState = 'loading' | 'ready' | 'unavailable'
+const skinPreviewState = ref<SkinPreviewState>('loading')
 const skinPreviewKey = ref(0)
 const isScanningSkins = ref(false)
 const skinNotice = ref('')
@@ -75,7 +76,7 @@ function applySkinScan(scan: SkinScanResultView, preservePreview = false): void 
     preservePreview && availableIds.has(previousPreview)
       ? previousPreview
       : scan.selectedSkinId || scan.skins[0]?.manifest.id || ''
-  skinPreviewAvailable.value = false
+  skinPreviewState.value = 'loading'
   skinPreviewKey.value += 1
   if (scan.selectionRecovered) {
     skinNotice.value = scan.selectedSkinId
@@ -87,7 +88,7 @@ function applySkinScan(scan: SkinScanResultView, preservePreview = false): void 
 function previewSkinById(skinId: string): void {
   if (previewSkinId.value === skinId) return
   previewSkinId.value = skinId
-  skinPreviewAvailable.value = false
+  skinPreviewState.value = 'loading'
 }
 
 function notifySkinChanged(skinId: string): void {
@@ -342,10 +343,12 @@ onMounted(loadSettings)
                 :character-size="180"
                 :foot-x="95"
                 :foot-y="218"
-                @ready="skinPreviewAvailable = true"
-                @unavailable="skinPreviewAvailable = false"
+                @ready="skinPreviewState = 'ready'"
+                @unavailable="skinPreviewState = 'unavailable'"
               />
-              <span v-if="!skinPreviewAvailable" class="skin-preview-fallback">无法预览</span>
+              <span v-if="skinPreviewState === 'unavailable'" class="skin-preview-fallback"
+                >无法预览</span
+              >
               <strong>{{ previewSkin?.manifest.name }}</strong>
               <small>
                 {{ skinSourceLabel(previewSkin?.source ?? 'builtin') }} · v{{

@@ -32,6 +32,7 @@ const emit = defineEmits<{ ready: [hitbox: SpriteHitbox]; unavailable: [] }>()
 const host = ref<HTMLDivElement>()
 let app: Application | undefined
 let isInitialized = false
+let isDisposed = false
 let sprite: AnimatedSprite | undefined
 let activeSkinId = ''
 let loadSequence = 0
@@ -143,8 +144,9 @@ onMounted(async () => {
   if (!host.value) return
   try {
     const renderResolution = Math.min(4, Math.max(3, window.devicePixelRatio * 1.5))
-    app = new Application()
-    await app.init({
+    const nextApp = new Application()
+    app = nextApp
+    await nextApp.init({
       width: props.width,
       height: props.height,
       backgroundAlpha: 0,
@@ -152,9 +154,14 @@ onMounted(async () => {
       autoDensity: true,
       resolution: renderResolution
     })
-    app.renderer.resize(props.width, props.height)
+    if (isDisposed || !host.value) {
+      nextApp.destroy({ removeView: true })
+      if (app === nextApp) app = undefined
+      return
+    }
+    nextApp.renderer.resize(props.width, props.height)
     isInitialized = true
-    host.value.appendChild(app.canvas)
+    host.value.appendChild(nextApp.canvas)
     const initialSkinId = props.skinId?.trim() || (await window.api.skins.list()).selectedSkinId
     await activateSkin(initialSkinId)
     window.addEventListener(SKIN_CHANGED_EVENT, handleSkinChanged)
@@ -181,10 +188,21 @@ watch(
 )
 
 onBeforeUnmount(() => {
+  isDisposed = true
   loadSequence += 1
   window.removeEventListener(SKIN_CHANGED_EVENT, handleSkinChanged)
   if (objectUrl) URL.revokeObjectURL(objectUrl)
-  if (isInitialized) app?.destroy(true, { children: true, texture: true })
+  objectUrl = undefined
+  const currentApp = app
+  app = undefined
+  if (!currentApp || !isInitialized) return
+  currentApp.ticker.stop()
+  sprite?.stop()
+  sprite?.destroy({ texture: true })
+  sprite = undefined
+  currentApp.stage.removeChildren()
+  currentApp.destroy({ removeView: true })
+  isInitialized = false
 })
 </script>
 

@@ -106,7 +106,6 @@ function requestRoomOpen(): void {
 }
 
 function returnToPet(window: BrowserWindow): void {
-  setWindowMode(window, 'pet')
   window.webContents.send('app:return-to-pet')
   showWindow()
 }
@@ -128,7 +127,6 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   if (mode === 'room') {
     persistPetBounds()
     currentMode = 'room'
-    window.webContents.setZoomFactor(1)
     window.setResizable(true)
     window.setSkipTaskbar(false)
     window.setMaximumSize(10_000, 10_000)
@@ -141,7 +139,6 @@ function setWindowMode(window: BrowserWindow, mode: WindowMode): void {
   currentMode = 'pet'
   const size = getPetSize()
   window.unmaximize()
-  window.webContents.setZoomFactor(petScale)
   window.setMinimumSize(size.width, size.height)
   window.setMaximumSize(size.width, size.height)
   window.setResizable(false)
@@ -164,7 +161,6 @@ function setPetScale(window: BrowserWindow, value: unknown): number {
     ...size
   }
   if (currentMode === 'pet') {
-    window.webContents.setZoomFactor(petScale)
     window.setMinimumSize(size.width, size.height)
     window.setMaximumSize(size.width, size.height)
     window.setBounds(petBounds, true)
@@ -221,7 +217,7 @@ function createWindow(): BrowserWindow {
       nodeIntegration: false
     }
   })
-  window.webContents.setZoomFactor(petScale)
+  window.webContents.setZoomFactor(1)
 
   window.on('ready-to-show', () => window.show())
   window.on('move', schedulePetBoundsSave)

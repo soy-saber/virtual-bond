@@ -7,7 +7,8 @@ const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
 const isAwake = ref(false)
 const isDragging = ref(false)
 const showBubble = ref(false)
-const spriteAvailable = ref(false)
+type SpriteLoadState = 'loading' | 'ready' | 'unavailable'
+const spriteLoadState = ref<SpriteLoadState>('loading')
 const spritePlayer = ref<InstanceType<typeof PetSpritePlayer>>()
 const modelHitArea = ref<HTMLElement>()
 const controls = ref<HTMLElement>()
@@ -18,6 +19,10 @@ const bubbleText = ref('')
 let removeSayListener: (() => void) | undefined
 let mousePassthrough = false
 let bubbleTimer: number | undefined
+
+const petShellStyle = computed(() => ({
+  transform: `scale(${petScale.value})`
+}))
 
 const modelHitboxStyle = computed(() => {
   const padding = 7
@@ -73,11 +78,11 @@ function updateSpriteHitbox(hitbox: {
   height: number
 }): void {
   spriteHitbox.value = hitbox
-  spriteAvailable.value = true
+  spriteLoadState.value = 'ready'
 }
 
 function markSpriteUnavailable(): void {
-  spriteAvailable.value = false
+  spriteLoadState.value = 'unavailable'
   spriteHitbox.value = { left: 104, top: 140, width: 152, height: 210 }
 }
 
@@ -164,7 +169,12 @@ async function loadPetScale(): Promise<void> {
 </script>
 
 <template>
-  <main class="pet-shell" @dblclick="openRoom" @contextmenu.prevent="showContextMenu">
+  <main
+    class="pet-shell"
+    :style="petShellStyle"
+    @dblclick="openRoom"
+    @contextmenu.prevent="showContextMenu"
+  >
     <div class="pet-drag-surface">
       <div
         ref="modelHitArea"
@@ -191,7 +201,7 @@ async function loadPetScale(): Promise<void> {
         @unavailable="markSpriteUnavailable"
       />
       <div
-        v-show="!spriteAvailable"
+        v-show="spriteLoadState === 'unavailable'"
         class="pet-character"
         :class="{ awake: isAwake }"
         :aria-label="`${props.name}桌宠`"

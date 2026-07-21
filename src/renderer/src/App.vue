@@ -107,7 +107,6 @@ const roomContexts: Array<{ id: RoomContext; icon: string; label: string }> = [
 ]
 const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
-const closeWindow = (): Promise<void> => window.api.window.close()
 const openRoom = async (): Promise<void> => {
   try {
     await window.api.window.setMode('room')
@@ -118,9 +117,13 @@ const openRoom = async (): Promise<void> => {
   }
 }
 const closeRoom = async (): Promise<void> => {
+  isSettingsOpen.value = false
   isRoomOpen.value = false
+  await nextTick()
   await window.api.window.setMode('pet')
 }
+const closeWindow = (): Promise<void> =>
+  isRoomOpen.value ? closeRoom() : window.api.window.close()
 let removeOpenRoomListener: (() => void) | undefined
 let removeReturnToPetListener: (() => void) | undefined
 let removeDeltaListener: (() => void) | undefined
@@ -177,8 +180,7 @@ async function scrollToLatest(behavior: 'auto' | 'smooth' = 'smooth'): Promise<v
 onMounted(async () => {
   removeOpenRoomListener = window.api.pet.onOpenRoom(() => void openRoom())
   removeReturnToPetListener = window.api.pet.onReturnToPet(() => {
-    isSettingsOpen.value = false
-    isRoomOpen.value = false
+    void closeRoom()
   })
   removeDeltaListener = window.api.conversation.onDelta(({ requestId, delta }) => {
     if (requestId !== currentRequestId.value) return
