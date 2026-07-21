@@ -252,7 +252,7 @@ function createWindow(): BrowserWindow {
 
 function createTray(): void {
   tray = new Tray(icon)
-  tray.setToolTip('Virtual Bond · 澄夏在这里')
+  tray.setToolTip('Virtual Bond · 牧濑红莉栖在这里')
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: '显示 / 隐藏桌宠', click: toggleWindowVisibility },

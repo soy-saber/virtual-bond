@@ -96,6 +96,38 @@ const migrations: Migration[] = [
         WHERE updated_at = '' OR updated_at IS NULL
       `)
     }
+  },
+  {
+    version: 3,
+    apply: (db) => {
+      const legacy = db.prepare("SELECT 1 FROM characters WHERE id = 'chengxia'").get()
+      if (!legacy) return
+
+      const timestamp = new Date().toISOString()
+      db.prepare(
+        `
+          INSERT OR IGNORE INTO characters (
+            id, name, status, mood, relationship_started_at,
+            bond_level, bond_experience, created_at, updated_at
+          )
+          SELECT
+            'makise-kurisu', '牧濑红莉栖', '正在整理实验记录', '冷静而专注',
+            relationship_started_at, bond_level, bond_experience, created_at, ?
+          FROM characters
+          WHERE id = 'chengxia'
+        `
+      ).run(timestamp)
+      db.exec(`
+        UPDATE conversations
+        SET character_id = 'makise-kurisu'
+        WHERE character_id = 'chengxia'
+          AND EXISTS (SELECT 1 FROM characters WHERE id = 'makise-kurisu');
+
+        DELETE FROM characters
+        WHERE id = 'chengxia'
+          AND EXISTS (SELECT 1 FROM characters WHERE id = 'makise-kurisu');
+      `)
+    }
   }
 ]
 
@@ -153,7 +185,7 @@ export class DatabaseStore {
   }
 
   private seedDefaultCharacter(): void {
-    const characterId = 'chengxia'
+    const characterId = 'makise-kurisu'
     const exists = this.db.prepare('SELECT 1 FROM characters WHERE id = ?').get(characterId)
     if (exists) return
 
@@ -174,9 +206,9 @@ export class DatabaseStore {
     this.db.transaction(() => {
       insertCharacter.run(
         characterId,
-        '澄夏',
-        '正在窗边听雨',
-        '安静而亲近',
+        '牧濑红莉栖',
+        '正在整理实验记录',
+        '冷静而专注',
         relationshipStartedAt,
         3,
         58,
@@ -187,7 +219,7 @@ export class DatabaseStore {
         randomUUID(),
         characterId,
         'companion',
-        '你回来啦。今天外面下了很久的雨，我给你留了一小块安静的时间。',
+        '你回来了。外面的雨下了很久……先坐一会儿吧。',
         timestamp,
         timestamp
       )

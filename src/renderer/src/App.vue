@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetView from './PetView.vue'
-import PetSpritePlayer from './PetSpritePlayer.vue'
+import RoomScene from './RoomScene.vue'
 import SettingsPanel from './SettingsPanel.vue'
+import type { ConversationState, RoomAction, RoomAnchorId, RoomContext } from './room-state'
 
 type Message = {
   id: string
@@ -24,9 +25,9 @@ type ProviderSummary = {
 
 const companion = ref({
   id: '',
-  name: '澄夏',
-  status: '正在窗边听雨',
-  mood: '安静而亲近',
+  name: '牧濑红莉栖',
+  status: '正在整理实验记录',
+  mood: '冷静而专注',
   relationshipStartedAt: new Date().toISOString(),
   bondLevel: 1,
   bondExperience: 0
@@ -41,14 +42,20 @@ const loadError = ref('')
 const sendError = ref('')
 const isRoomOpen = ref(false)
 const isSettingsOpen = ref(false)
-const roomSpriteAvailable = ref(false)
 const characterScene = ref<HTMLElement>()
 const roomCharacterLayout = ref({
   width: 600,
-  height: 712,
-  characterSize: 380,
-  footX: 370,
-  footY: 622
+  height: 712
+})
+const savedRoomContext = localStorage.getItem('virtual-bond:room-context')
+const roomContext = ref<RoomContext>(
+  savedRoomContext === 'focus' || savedRoomContext === 'meal' || savedRoomContext === 'rest'
+    ? savedRoomContext
+    : 'free'
+)
+const roomStatus = ref<{ action: RoomAction; label: string; anchorId?: RoomAnchorId }>({
+  action: 'idle',
+  label: '在房间里陪着你'
 })
 const currentRequestId = ref('')
 const providerSummary = ref<ProviderSummary>()
@@ -59,6 +66,45 @@ const relationship = computed(() => {
   return `相识的第 ${days} 天`
 })
 const bondProgress = computed(() => `${Math.min(companion.value.bondExperience, 100)}%`)
+const roomConversationState = computed<ConversationState>(() => {
+  if (!isThinking.value) return 'idle'
+  const streaming = messages.value.find(
+    (message) => message.id === `streaming-${currentRequestId.value}`
+  )
+  return streaming?.content ? 'speaking' : 'thinking'
+})
+const roomContextCopy: Record<
+  RoomContext,
+  { eyebrow: string; title: string; description: string }
+> = {
+  free: {
+    eyebrow: 'FREE COMPANY · RAINY EVENING',
+    title: '不必安排什么，\n就一起待一会儿。',
+    description: '自由陪伴中，可以点击地毯或家具进行互动'
+  },
+  focus: {
+    eyebrow: 'FOCUS WITH ME · STUDY TIME',
+    title: '你专心做事，\n我在旁边查资料。',
+    description: '学习情境已开启，功能层 Agent 将在后续接入'
+  },
+  meal: {
+    eyebrow: 'MEAL TOGETHER · DINNER TIME',
+    title: '先好好吃饭，\n忙碌也要暂停一下。',
+    description: '用餐情境已开启，她会前往餐桌'
+  },
+  rest: {
+    eyebrow: 'SLOW DOWN · REST TIME',
+    title: '今天辛苦了，\n现在可以慢一点。',
+    description: '休息情境已开启，她会在阅读椅上休息'
+  }
+}
+const activeRoomCopy = computed(() => roomContextCopy[roomContext.value])
+const roomContexts: Array<{ id: RoomContext; icon: string; label: string }> = [
+  { id: 'free', icon: '✦', label: '自由陪伴' },
+  { id: 'focus', icon: '⌕', label: '一起学习' },
+  { id: 'meal', icon: '♨', label: '一起吃饭' },
+  { id: 'rest', icon: '☾', label: '休息一下' }
+]
 const minimizeWindow = (): Promise<void> => window.api.window.minimize()
 const toggleMaximizeWindow = (): Promise<boolean> => window.api.window.toggleMaximize()
 const closeWindow = (): Promise<void> => window.api.window.close()
@@ -85,13 +131,9 @@ function updateRoomCharacterLayout(): void {
   if (!scene) return
   const width = Math.max(360, Math.round(scene.clientWidth))
   const height = Math.max(520, Math.round(scene.clientHeight))
-  const characterSize = Math.round(Math.min(540, Math.max(340, width * 0.68, height * 0.56)))
   roomCharacterLayout.value = {
     width,
-    height,
-    characterSize,
-    footX: Math.round(Math.min(width - 54, Math.max(width * 0.58, width - characterSize * 0.62))),
-    footY: height - 88
+    height
   }
 }
 
@@ -112,6 +154,8 @@ watch(
   },
   { flush: 'post' }
 )
+
+watch(roomContext, (context) => localStorage.setItem('virtual-bond:room-context', context))
 
 const providerStatus = computed(() => {
   if (!providerSummary.value?.apiKeyPresent) return '尚未配置模型'
@@ -255,7 +299,7 @@ async function sendMessage(): Promise<void> {
         <div class="companion-card">
           <div class="portrait-wrap">
             <div class="halo"></div>
-            <div class="portrait">澄</div>
+            <div class="portrait">红</div>
             <span class="online-dot"></span>
           </div>
           <h1>{{ companion.name }}</h1>
@@ -279,48 +323,39 @@ async function sendMessage(): Promise<void> {
 
       <section class="stage">
         <div class="atmosphere">
-          <span class="eyebrow">FRIDAY · RAINY EVENING</span>
-          <h2>晚上好，<br />要一起待一会儿吗？</h2>
-          <p>此刻的澄夏：{{ companion.mood }}</p>
+          <span class="eyebrow">{{ activeRoomCopy.eyebrow }}</span>
+          <h2>{{ activeRoomCopy.title }}</h2>
+          <p>{{ activeRoomCopy.description }}</p>
         </div>
-        <div ref="characterScene" class="character-scene" aria-label="角色展示占位">
-          <div class="study-window" aria-hidden="true">
-            <div class="moon"></div>
-            <div class="city-lights"><i v-for="index in 18" :key="index"></i></div>
-            <div class="window-rain"></div>
-            <span class="window-frame vertical"></span>
-            <span class="window-frame horizontal"></span>
-          </div>
-          <div class="study-shelf" aria-hidden="true">
-            <i v-for="index in 9" :key="index"></i>
-          </div>
-          <div class="study-lamp" aria-hidden="true"><i></i></div>
-          <div class="reading-chair" aria-hidden="true"><i></i><span></span></div>
-          <div class="study-rug" aria-hidden="true"></div>
-          <PetSpritePlayer
-            class="room-sprite-player"
+        <div ref="characterScene" class="character-scene room-game" aria-label="互动陪伴空间">
+          <RoomScene
+            class="room-game-canvas"
             :width="roomCharacterLayout.width"
             :height="roomCharacterLayout.height"
-            :character-size="roomCharacterLayout.characterSize"
-            :foot-x="roomCharacterLayout.footX"
-            :foot-y="roomCharacterLayout.footY"
-            @ready="roomSpriteAvailable = true"
-            @unavailable="roomSpriteAvailable = false"
+            :context="roomContext"
+            :conversation-state="roomConversationState"
+            :companion-name="companion.name"
+            @status="roomStatus = $event"
           />
-          <div v-show="!roomSpriteAvailable" class="character-silhouette">
-            <span class="hair"></span><span class="face"></span><span class="body"></span>
-          </div>
-          <div class="scene-floor"></div>
-          <div class="foreground-desk" aria-hidden="true">
-            <span class="book book-back"></span><span class="book book-front"></span>
-            <span class="tea-cup"><i></i></span>
-          </div>
-          <div class="foreground-plant" aria-hidden="true">
-            <i></i><i></i><i></i><i></i><span></span>
+          <div class="room-status-card" aria-live="polite">
+            <span class="room-status-dot"></span>
+            <div>
+              <strong>{{ companion.name }}</strong
+              ><small>{{ roomStatus.label }}</small>
+            </div>
           </div>
         </div>
-        <div class="quick-actions">
-          <button>☕ 分享此刻</button><button>◈ 今日签到</button><button>⌁ 猜个词</button>
+        <div class="quick-actions context-actions" aria-label="选择当前情境">
+          <button
+            v-for="context in roomContexts"
+            :key="context.id"
+            :class="{ active: roomContext === context.id }"
+            :aria-pressed="roomContext === context.id"
+            @click="roomContext = context.id"
+          >
+            <span>{{ context.icon }}</span
+            >{{ context.label }}
+          </button>
         </div>
       </section>
 
@@ -369,7 +404,7 @@ async function sendMessage(): Promise<void> {
           <textarea
             v-model="draft"
             rows="1"
-            placeholder="和澄夏说点什么……"
+            :placeholder="`和${companion.name}说点什么……`"
             @keydown.enter.exact.prevent="sendMessage"
           ></textarea>
           <div class="composer-tools">

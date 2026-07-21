@@ -25,7 +25,7 @@ Virtual Bond 将图片生成与普通对话 Provider 完全隔离。普通聊天
 
 ## 首套测试皮肤
 
-开发皮肤 `resources/skins/reference-companion` 使用本地参考图通过 `gpt-image-2` 编辑接口生成。原始参考图没有复制进仓库，仓库只保存可复用的项目素材：
+牧濑红莉栖开发皮肤 `resources/skins/reference-companion` 使用本地参考图通过 `gpt-image-2` 编辑接口生成。原始参考图没有复制进仓库，仓库只保存可复用的项目素材：
 
 - 当前透明 Sprite Sheet：`animations/idle.png`
 - 已验收的透明标准站姿：`references/character-front.png`
