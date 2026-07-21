@@ -50,6 +50,21 @@ test('conversation pauses travel and resumes it afterward', () => {
   assert.equal(machine.snapshot().action, 'walk')
 })
 
+test('keeps the conversation action when a new room is selected during a reply', () => {
+  const machine = new MultiFloorStateMachine()
+  machine.setConversationState('thinking')
+  machine.requestSpace('observatory')
+  assert.equal(machine.snapshot().action, 'thinking')
+  assert.equal(machine.snapshot().targetSpaceId, 'observatory')
+  machine.setConversationState('speaking')
+  machine.requestSpace('kitchen')
+  assert.equal(machine.snapshot().action, 'speaking')
+  assert.equal(machine.snapshot().targetSpaceId, 'kitchen')
+  machine.setConversationState('idle')
+  assert.equal(machine.snapshot().action, 'walk')
+  assert.equal(machine.snapshot().travelMode, 'walking')
+})
+
 test('distinguishes corridor walking from vertical elevator travel', () => {
   const machine = new MultiFloorStateMachine()
   machine.requestSpace('observatory')

@@ -212,7 +212,12 @@ export class MultiFloorStateMachine {
     this.targetSpaceId = spaceId
     this.route = planRouteFromPosition(this.position, spaceId)
     this.elevatorElapsedMs = 0
-    this.action = this.route.length ? 'walk' : BUILDING_SPACES[spaceId].action
+    this.action =
+      this.conversationState !== 'idle'
+        ? this.conversationState
+        : this.route.length
+          ? 'walk'
+          : BUILDING_SPACES[spaceId].action
   }
 
   setConversationState(state: ConversationState): void {
