@@ -25,6 +25,10 @@
 - 桌宠新增独立的动作决策层 `pet-action-state.ts`，统一处理 `dragging > speaking > interaction > idle` 优先级；拖拽结束后若气泡仍在，会恢复说话状态而不是直接回到待机。
 - `PetSpritePlayer` 新增声明式 `action` 输入，皮肤切换、播放器初始化和动作变化都使用同一播放入口；尚未提供的动作资源继续由主进程安全回退到 `idle`，因此可以先落地状态链路再逐步补素材。
 - 新增 2 项桌宠动作优先级测试，当前自动化测试总数为 30 项。
+- 在用户授权的 20 张以内、1K 生图预算中使用 3 张：通过 `gpt-image-2` 单参考图编辑生成桌宠 `interaction`、`speaking`、`dragging` 三套 `4 × 2` Sheet，均使用 `1024 × 1024`、`quality=low`、`n=1`，对应 Prompt 保存在 `resources/prompts/desktop-pet-*-sheet.zh-CN.md`。
+- 三套生成结果经过纯绿色色键移除和边缘收缩，再由 `normalize-sprite-sheet.py` 输出为每帧 `1024 × 1024`、水平中心 `512`、脚底基线 `976` 的运行 Sheet。`interaction` 为一次性回应并自动回到待机，`speaking` 与 `dragging` 为循环动作。
+- `normalize-sprite-sheet.py` 新增输出帧尺寸与目标人物高度参数，可以把低成本 1K 整张 Sheet 归一到皮肤统一逻辑画布；另提供 `build-reference-actions.py`，在不调用生图 API 时从待机母版构建可重复的安全回退原型，输出到 `resources/animation-prototypes/desktop-pet`，不会覆盖正式皮肤。
+- 当前 1K 动作素材在桌宠实际显示尺寸下可用，但发丝边缘仍有轻微色键污染，且模型逐帧重绘会造成衣摆与五官细节变化；已记录为明日实机验收项，后续正式资源应局部修帧或使用分层动画。
 - 新增 `docs/multi-floor-space.md`，明确三层建筑、房间职责、情境映射、节点路径、交互层级、动作素材约束和 `0.5.0` 验收标准。
 - 新增纯 TypeScript 多层空间模型 `multi-floor-state.ts`：`1200 × 900` 逻辑画布，包含观测室、温室、档案室、实验室、书房、厨房、起居室和卧室八个空间。
 - 四种现有情境分别映射到起居室、实验室、厨房和卧室；跨楼层移动会经过中央升降井的楼层节点，同层移动直接前往目标锚点。

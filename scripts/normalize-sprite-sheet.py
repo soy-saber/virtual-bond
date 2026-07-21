@@ -16,6 +16,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--foot-y", type=int, default=None)
     parser.add_argument("--center-x", type=int, default=None)
     parser.add_argument("--padding", type=int, default=12)
+    parser.add_argument("--output-frame-width", type=int, default=None)
+    parser.add_argument("--output-frame-height", type=int, default=None)
+    parser.add_argument("--target-height", type=int, default=None)
     return parser.parse_args()
 
 
@@ -34,8 +37,10 @@ def main() -> None:
 
     frame_width = source.width // args.columns
     frame_height = source.height // args.rows
-    center_x = args.center_x if args.center_x is not None else frame_width // 2
-    foot_y = args.foot_y if args.foot_y is not None else frame_height - args.padding
+    output_frame_width = args.output_frame_width or frame_width
+    output_frame_height = args.output_frame_height or frame_height
+    center_x = args.center_x if args.center_x is not None else output_frame_width // 2
+    foot_y = args.foot_y if args.foot_y is not None else output_frame_height - args.padding
     frames: list[Image.Image] = []
     boxes: list[tuple[int, int, int, int]] = []
 
@@ -53,8 +58,15 @@ def main() -> None:
         frames.append(frame)
         boxes.append(alpha_bbox(frame))
 
-    target_height = int(round(median(bottom - top for _, top, _, bottom in boxes)))
-    output = Image.new("RGBA", source.size, (0, 0, 0, 0))
+    source_target_height = int(round(median(bottom - top for _, top, _, bottom in boxes)))
+    target_height = args.target_height or round(
+        source_target_height * output_frame_height / frame_height
+    )
+    output = Image.new(
+        "RGBA",
+        (output_frame_width * args.columns, output_frame_height * args.rows),
+        (0, 0, 0, 0),
+    )
     for index, (frame, bbox) in enumerate(zip(frames, boxes, strict=True)):
         left, top, right, bottom = bbox
         sprite = frame.crop(bbox)
@@ -65,11 +77,15 @@ def main() -> None:
             )
         x = center_x - sprite.width // 2
         y = foot_y - sprite.height
-        aligned = Image.new("RGBA", (frame_width, frame_height), (0, 0, 0, 0))
+        aligned = Image.new(
+            "RGBA", (output_frame_width, output_frame_height), (0, 0, 0, 0)
+        )
         aligned.alpha_composite(sprite, (x, y))
         column = index % args.columns
         row = index // args.columns
-        output.alpha_composite(aligned, (column * frame_width, row * frame_height))
+        output.alpha_composite(
+            aligned, (column * output_frame_width, row * output_frame_height)
+        )
         print(
             f"frame={index} source_bbox={left},{top},{right},{bottom} "
             f"aligned_center={center_x} aligned_foot={foot_y}"
@@ -77,9 +93,8 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     output.save(args.output)
-    print(f"wrote={args.output} frame={frame_width}x{frame_height}")
+    print(f"wrote={args.output} frame={output_frame_width}x{output_frame_height}")
 
 
 if __name__ == "__main__":
     main()
-

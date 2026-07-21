@@ -29,6 +29,37 @@
       "spacing": 0,
       "fps": 2,
       "loop": true
+    },
+    "interaction": {
+      "file": "animations/interaction.png",
+      "frameWidth": 1024,
+      "frameHeight": 1024,
+      "frames": 8,
+      "columns": 4,
+      "rows": 2,
+      "fps": 8,
+      "loop": false,
+      "next": "idle"
+    },
+    "speaking": {
+      "file": "animations/speaking.png",
+      "frameWidth": 1024,
+      "frameHeight": 1024,
+      "frames": 8,
+      "columns": 4,
+      "rows": 2,
+      "fps": 6,
+      "loop": true
+    },
+    "dragging": {
+      "file": "animations/dragging.png",
+      "frameWidth": 1024,
+      "frameHeight": 1024,
+      "frames": 8,
+      "columns": 4,
+      "rows": 2,
+      "fps": 8,
+      "loop": true
     }
   }
 }
