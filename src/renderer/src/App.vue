@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import PetView from './PetView.vue'
-import RoomScene from './RoomScene.vue'
+import MultiFloorScene from './MultiFloorScene.vue'
 import SettingsPanel from './SettingsPanel.vue'
-import type { ConversationState, RoomAction, RoomAnchorId, RoomContext } from './room-state'
+import type { ConversationState, RoomAction, RoomContext } from './room-state'
 
 type Message = {
   id: string
@@ -53,7 +53,7 @@ const roomContext = ref<RoomContext>(
     ? savedRoomContext
     : 'free'
 )
-const roomStatus = ref<{ action: RoomAction; label: string; anchorId?: RoomAnchorId }>({
+const roomStatus = ref<{ action: RoomAction; label: string; anchorId?: string }>({
   action: 'idle',
   label: '在房间里陪着你'
 })
@@ -330,7 +330,7 @@ async function sendMessage(): Promise<void> {
           <p>{{ activeRoomCopy.description }}</p>
         </div>
         <div ref="characterScene" class="character-scene room-game" aria-label="互动陪伴空间">
-          <RoomScene
+          <MultiFloorScene
             class="room-game-canvas"
             :width="roomCharacterLayout.width"
             :height="roomCharacterLayout.height"
