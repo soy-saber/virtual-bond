@@ -11,13 +11,15 @@ const props = withDefaults(
     footX?: number
     footY?: number
     skinId?: string
+    action?: string
   }>(),
   {
     width: 360,
     height: 440,
     characterSize: 256,
     footX: 180,
-    footY: 350
+    footY: 350,
+    action: 'idle'
   }
 )
 type SpriteHitbox = { left: number; top: number; width: number; height: number }
@@ -129,7 +131,7 @@ async function activateSkin(skinId: string): Promise<void> {
     emit('unavailable')
     return
   }
-  await play('idle')
+  await play(props.action)
 }
 
 function handleSkinChanged(event: Event): void {
@@ -175,6 +177,13 @@ watch(
   () => props.skinId,
   (skinId) => {
     if (isInitialized && typeof skinId === 'string') void activateSkin(skinId)
+  }
+)
+
+watch(
+  () => props.action,
+  (action) => {
+    if (isInitialized && activeSkinId) void play(action)
   }
 )
 

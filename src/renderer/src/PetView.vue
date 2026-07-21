@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import PetSpritePlayer from './PetSpritePlayer.vue'
+import { resolvePetAction } from './pet-action-state'
 
 const props = defineProps<{ name: string; mood: string }>()
 const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
@@ -9,13 +10,19 @@ const isDragging = ref(false)
 const showBubble = ref(false)
 type SpriteLoadState = 'loading' | 'ready' | 'unavailable'
 const spriteLoadState = ref<SpriteLoadState>('loading')
-const spritePlayer = ref<InstanceType<typeof PetSpritePlayer>>()
 const modelHitArea = ref<HTMLElement>()
 const controls = ref<HTMLElement>()
 const dismissButton = ref<HTMLButtonElement>()
 const spriteHitbox = ref({ left: 143, top: 110, width: 74, height: 240 })
 const petScale = ref(0.75)
 const bubbleText = ref('')
+const petAction = computed(() =>
+  resolvePetAction({
+    isDragging: isDragging.value,
+    isSpeaking: showBubble.value,
+    isAwake: isAwake.value
+  })
+)
 let removeSayListener: (() => void) | undefined
 let mousePassthrough = false
 let bubbleTimer: number | undefined
@@ -101,7 +108,6 @@ function say(message: string): void {
 
 function wake(): void {
   isAwake.value = true
-  void spritePlayer.value?.play('interaction')
   window.setTimeout(() => {
     isAwake.value = false
   }, 1800)
@@ -195,8 +201,8 @@ async function loadPetScale(): Promise<void> {
 
       <div class="pet-aura"></div>
       <PetSpritePlayer
-        ref="spritePlayer"
         class="pet-sprite-player"
+        :action="petAction"
         @ready="updateSpriteHitbox"
         @unavailable="markSpriteUnavailable"
       />
