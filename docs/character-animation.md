@@ -7,7 +7,7 @@
 - Q 版设定板：[`makise-kurisu-chibi-design-v1.png`](../resources/concepts/makise-kurisu-chibi-design-v1.png)
 - 首张行走生成原图：[`makise-kurisu-chibi-walk-right-sheet-v1-key.png`](../resources/concepts/makise-kurisu-chibi-walk-right-sheet-v1-key.png)
 - 透明化原图：[`makise-kurisu-chibi-walk-right-sheet-v1-alpha.png`](../resources/concepts/makise-kurisu-chibi-walk-right-sheet-v1-alpha.png)
-- 运行原型 Sheet：[`walk-right.png`](../resources/animation-prototypes/makise-kurisu-chibi/walk-right.png)
+- 运行原型 Sheet：[`walk-right-v3.png`](../resources/animation-prototypes/makise-kurisu-chibi/walk-right-v3.png)
 - 正面停留帧：[`idle-front.png`](../resources/animation-prototypes/makise-kurisu-chibi/idle-front.png)
 
 角色约三头身，保留红棕长发、蓝眼、白衬衫、红领带、棕色外套、深色短裤、丝袜和短靴。长发外轮廓、红领带与外套下摆是缩小后的主要识别点。
@@ -58,7 +58,7 @@
 
 ### 动作可读性验收
 
-当前 `walk-right` 虽然具有 8 帧侧面图，但缺少可读的完整迈步循环，不能仅靠提高帧率、上下起伏、身体旋转或阴影缩放修复。下一版至少要覆盖：
+当前 `walk-right-v3` 已覆盖完整迈步候选，但仍需实机确认缩小尺寸下的脚底连续性。不能仅靠提高帧率、上下起伏、身体旋转或阴影缩放修复动作问题。正式验收至少要覆盖：
 
 1. 接触：前脚脚跟或脚掌落地，后脚准备离地。
 2. 下压：身体重心最低，两腿承重关系明确。
@@ -66,9 +66,13 @@
 4. 抬升：身体重心最高，摆动腿向下一次接触点伸出。
 5. 左右腿交换后重复上述相位，首尾帧连续且脚底没有反向滑动。
 
-桌宠拎起不能复用走路姿势。动作应拆为离地预备、悬挂循环和放下回弹；悬挂阶段的受力点位于头顶或衣领附近，躯干在受力点正下方，腿部自然下垂并随水平移动反向滞后，头发和外套再晚一拍跟随。当前 `dragging` Sheet 的脚向前姿势不符合这一约束，必须重绘。
+桌宠拎起不能复用走路姿势。根据用户提供的直接操作 GIF，目标不是写实的垂直悬挂，而是“颈后提点约束 + 主动缩成一团 + 带惯性的整体摆动”：胸腹内收，骨盆向前上方卷起，双腿屈膝并拢到身体前下方，手臂靠近胸口；头发、衣摆和腿部相对身体晚 1–2 帧跟随。不要把四肢分别做成自由甩动的布娃娃。
 
-桌宠单击回应是一次性动作，8 帧建议以约 `5 fps` 播放，并包含预备、明确回应姿势、短暂停留和收势。当前 Sheet 已先放慢到 1.6 秒，但动作语义仍需通过重绘增强。
+当前 `dragging-v3` 仍接近“站姿悬空”，没有形成上述蜷缩姿势，实机结论为偏僵硬。下一版拆分为：`pickup` 12 帧、约 0.5 秒；`held-idle` 24–36 帧、约 1–1.5 秒循环；`release` 10–12 帧、约 0.4–0.5 秒。精灵按 `24 fps` 播放，鼠标位移、主体滞后、最大倾角和回弹由 `60 fps` 运行时弹簧阻尼计算。
+
+桌宠单击回应是一次性动作。当前 8 帧 Sheet 以约 `5 fps` 播放，但实机发现多手生成瑕疵和动作语义不清。下一版应增加有效中间帧，严格保持角色只有两只手，并包含预备、明确回应姿势、短暂停留和收势。
+
+动作切换卡顿与素材帧数是两个问题。当前 `PetSpritePlayer` 每次动作变化都会重新经 IPC 读取 PNG、创建 Blob URL、解码纹理并销毁旧纹理；正式增加帧数前必须先实现按皮肤和动作预加载缓存，否则更大的 Sheet 会放大切换停顿和显存抖动。
 
 ### 跨楼层
 
@@ -92,18 +96,22 @@ walk-to-elevator → elevator-enter → elevator-loop → elevator-exit → walk
 | stand-up   |      6–8 | 否   | 离开座椅             |
 | thinking   |      6–8 | 是   | 模型生成前状态       |
 | speaking   |      6–8 | 是   | 流式回复状态         |
+| pickup     |       12 | 否   | 脚离地并缩成悬挂姿势 |
+| held-idle  |    24–36 | 是   | 颈后提点下的悬挂循环 |
+| release    |    10–12 | 否   | 落地压缩、回弹与站稳 |
+| interaction |   12–18 | 否   | 单击后的完整回应动作 |
 | studying   |        8 | 是   | 实验室和书房         |
 | eating     |        8 | 是   | 厨房或餐桌           |
 | resting    |        8 | 是   | 卧室和休息区         |
 
 ## 下一步
 
-标准化后的 `walk-right` 已接入 `MultiFloorScene`，替换程序化剪影。同层移动播放 8 帧循环，向左暂时水平镜像；停止和对话暂停时切换为正面停留帧。现有行走 Sheet 只作为方向与管线原型，不再视为完整迈步素材。
+标准化后的 `walk-right-v3` 已接入 `MultiFloorScene`，替换程序化剪影。同层移动播放 8 帧循环，向左暂时水平镜像；停止和对话暂停时切换为正面停留帧。旧 `walk-right.png` 保留为回退候选。
 
 跨楼层已经使用原创玻璃电梯表现：升降井明确标出 `3F 观测层 / 2F 研究层 / 1F 生活层` 三个节点。角色走到当前层节点后停止步行动画，随后在经过的楼层节点中短暂随轿厢露面，再离散跳到下一个节点；不会沿竖井连续行走。到达目标层后隐藏轿厢并恢复走路。后续继续：
 
-1. 重绘包含完整接触循环的 `walk-right`，再评估是否需要独立 `walk-left`。
-2. 重绘桌宠 `dragging` 和 `interaction`，分别满足悬挂受力和一次性动作可读性要求。
-3. 增加 `elevator-enter` 和 `elevator-exit`，避免角色瞬间进入或离开轿厢。
-4. 实机验证 96–192 像素角色高度下的轮廓、锚点和帧节奏。
+1. 为皮肤动作播放器增加预加载与纹理缓存，再复测当前卡顿中有多少来自素材本身。
+2. 降低 `walk-right-v3` 的播放步频，并按上述三段式规格重做拎起和单击资源；当前 v3 文件保留为回退对照。
+3. 为悬挂阶段增加以颈后为提点的运行时弹簧阻尼，只模拟整体主体及有限次级延迟，不做完整布娃娃。
+4. 增加 `elevator-enter` 和 `elevator-exit`，避免角色瞬间进入或离开轿厢。
 5. 通过局部修帧或分层骨骼动画减少长发和外套在不同帧中的细节漂移。

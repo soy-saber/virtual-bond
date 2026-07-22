@@ -67,7 +67,9 @@ def main() -> None:
         (output_frame_width * args.columns, output_frame_height * args.rows),
         (0, 0, 0, 0),
     )
-    for index, (frame, bbox) in enumerate(zip(frames, boxes, strict=True)):
+    if len(frames) != len(boxes):
+        raise ValueError("Sprite frame and bounding-box counts differ")
+    for index, (frame, bbox) in enumerate(zip(frames, boxes)):
         left, top, right, bottom = bbox
         sprite = frame.crop(bbox)
         if sprite.height != target_height:

@@ -14,7 +14,7 @@ import {
 } from 'pixi.js'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import idleFrontUrl from '../../../resources/animation-prototypes/makise-kurisu-chibi/idle-front.png?url'
-import walkSheetUrl from '../../../resources/animation-prototypes/makise-kurisu-chibi/walk-right.png?url'
+import walkSheetUrl from '../../../resources/animation-prototypes/makise-kurisu-chibi/walk-right-v3.png?url'
 import {
   BUILDING_HEIGHT,
   BUILDING_SPACES,

@@ -31,7 +31,7 @@
       "loop": true
     },
     "interaction": {
-      "file": "animations/interaction.png",
+      "file": "animations/interaction-v3.png",
       "frameWidth": 1024,
       "frameHeight": 1024,
       "frames": 8,
@@ -52,7 +52,7 @@
       "loop": true
     },
     "dragging": {
-      "file": "animations/dragging.png",
+      "file": "animations/dragging-v3.png",
       "frameWidth": 1024,
       "frameHeight": 1024,
       "frames": 8,
