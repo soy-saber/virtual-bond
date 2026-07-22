@@ -7,11 +7,13 @@ import {
   Container,
   Graphics,
   Rectangle,
+  Sprite,
   Text,
   Texture,
   type Ticker
 } from 'pixi.js'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import idleFrontUrl from '../../../resources/animation-prototypes/makise-kurisu-chibi/idle-front.png?url'
 import walkSheetUrl from '../../../resources/animation-prototypes/makise-kurisu-chibi/walk-right.png?url'
 import {
   BUILDING_HEIGHT,
@@ -55,6 +57,7 @@ let app: Application | undefined
 let world: Container | undefined
 let character: Container | undefined
 let characterSprite: AnimatedSprite | undefined
+let characterIdleSprite: Sprite | undefined
 let elevatorBack: Container | undefined
 let elevatorFront: Container | undefined
 let tickerUpdate: ((ticker: Ticker) => void) | undefined
@@ -156,7 +159,7 @@ function buildSpace(spaceId: SpaceId): Container {
   return room
 }
 
-function buildCharacter(sheetTexture: Texture): Container {
+function buildCharacter(sheetTexture: Texture, idleTexture: Texture): Container {
   const root = new Container()
   const shadow = new Graphics().ellipse(0, 3, 37, 10).fill({ color: 0x07070b, alpha: 0.38 })
   const frames = Array.from(
@@ -170,11 +173,15 @@ function buildCharacter(sheetTexture: Texture): Container {
   characterSprite = new AnimatedSprite(frames)
   characterSprite.anchor.set(0.5, 496 / 512)
   characterSprite.scale.set(0.3)
-  characterSprite.animationSpeed = 8 / 60
+  characterSprite.animationSpeed = 10 / 60
   characterSprite.loop = true
   characterSprite.roundPixels = true
   characterSprite.gotoAndStop(0)
-  root.addChild(shadow, characterSprite)
+  characterIdleSprite = new Sprite(idleTexture)
+  characterIdleSprite.anchor.set(0.5, 496 / 512)
+  characterIdleSprite.scale.set(0.3)
+  characterIdleSprite.roundPixels = true
+  root.addChild(shadow, characterIdleSprite, characterSprite)
   return root
 }
 
@@ -240,7 +247,7 @@ function updateViewport(): void {
   )
 }
 
-function buildWorld(sheetTexture: Texture): Container {
+function buildWorld(sheetTexture: Texture, idleTexture: Texture): Container {
   const root = new Container()
   root.sortableChildren = true
   root.addChild(
@@ -264,7 +271,7 @@ function buildWorld(sheetTexture: Texture): Container {
   elevatorBack = elevator.back
   elevatorFront = elevator.front
   root.addChild(elevatorBack)
-  character = buildCharacter(sheetTexture)
+  character = buildCharacter(sheetTexture, idleTexture)
   const initial = machine.snapshot()
   character.position.set(initial.position.x, initial.position.y)
   character.zIndex = 1000
@@ -290,26 +297,35 @@ onMounted(async () => {
     return
   }
   host.value.appendChild(nextApp.canvas)
-  const walkSheet = await Assets.load<Texture>(walkSheetUrl)
+  const [walkSheet, idleFront] = await Promise.all([
+    Assets.load<Texture>(walkSheetUrl),
+    Assets.load<Texture>(idleFrontUrl)
+  ])
   if (disposed) {
     nextApp.destroy({ removeView: true })
     return
   }
-  world = buildWorld(walkSheet)
+  world = buildWorld(walkSheet, idleFront)
   nextApp.stage.addChild(world)
   machine.requestContext(props.context)
   machine.setConversationState(props.conversationState)
   tickerUpdate = (ticker): void => {
     const snapshot = machine.update(ticker.deltaMS)
+    const walking = snapshot.travelMode === 'walking' && snapshot.action === 'walk'
     if (character) {
       character.position.set(snapshot.position.x, snapshot.position.y)
       character.scale.x = snapshot.facing === 'left' ? -1 : 1
       character.alpha =
         snapshot.action === 'thinking' ? 0.78 + Math.sin(Date.now() / 220) * 0.12 : 1
     }
-    if (snapshot.travelMode !== lastTravelMode) {
+    if (characterSprite) characterSprite.visible = walking
+    if (characterIdleSprite) characterIdleSprite.visible = !walking
+    if (
+      snapshot.travelMode !== lastTravelMode ||
+      (snapshot.action === 'walk') !== characterSprite?.playing
+    ) {
       lastTravelMode = snapshot.travelMode
-      if (snapshot.travelMode === 'walking') characterSprite?.play()
+      if (snapshot.travelMode === 'walking' && snapshot.action === 'walk') characterSprite?.play()
       else characterSprite?.gotoAndStop(0)
     }
     const usingElevator = snapshot.travelMode === 'elevator'
@@ -362,6 +378,7 @@ onBeforeUnmount(() => {
   world = undefined
   character = undefined
   characterSprite = undefined
+  characterIdleSprite = undefined
   elevatorBack = undefined
   elevatorFront = undefined
 })

@@ -26,6 +26,12 @@ const petAction = computed(() =>
 let removeSayListener: (() => void) | undefined
 let mousePassthrough = false
 let bubbleTimer: number | undefined
+let clickTimer: number | undefined
+let lastClickAt = 0
+let pressOrigin: { x: number; y: number; pointerId: number } | undefined
+const CLICK_DELAY_MS = 280
+const DOUBLE_CLICK_WINDOW_MS = 320
+const DRAG_THRESHOLD_PX = 6
 
 const petShellStyle = computed(() => ({
   transform: `scale(${petScale.value})`
@@ -127,6 +133,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   removeSayListener?.()
   if (bubbleTimer) window.clearTimeout(bubbleTimer)
+  if (clickTimer) window.clearTimeout(clickTimer)
   document.removeEventListener('mousemove', syncMousePassthrough)
   setMousePassthrough(false)
 })
@@ -143,22 +150,60 @@ function openRoom(): void {
 
 function startDrag(event: PointerEvent): void {
   if (event.button !== 0) return
+  pressOrigin = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
   setMousePassthrough(false)
-  isDragging.value = true
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-  window.api.window.beginDrag()
 }
 
-function moveDrag(): void {
-  if (!isDragging.value) return
+function moveDrag(event: PointerEvent): void {
+  if (!pressOrigin || pressOrigin.pointerId !== event.pointerId) return
+  if (!isDragging.value) {
+    const distance = Math.hypot(event.clientX - pressOrigin.x, event.clientY - pressOrigin.y)
+    if (distance < DRAG_THRESHOLD_PX) return
+    isDragging.value = true
+    window.api.window.beginDrag()
+  }
   window.api.window.dragTo()
 }
 
 function endDrag(event: PointerEvent): void {
-  if (!isDragging.value) return
-  isDragging.value = false
+  if (!pressOrigin || pressOrigin.pointerId !== event.pointerId) return
+  const wasDragging = isDragging.value
+  pressOrigin = undefined
+  if (wasDragging) {
+    isDragging.value = false
+    ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
+    window.api.window.endDrag()
+    return
+  }
   ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
-  window.api.window.endDrag()
+  const now = Date.now()
+  if (now - lastClickAt <= DOUBLE_CLICK_WINDOW_MS) {
+    if (clickTimer) window.clearTimeout(clickTimer)
+    clickTimer = undefined
+    lastClickAt = 0
+    openRoom()
+    return
+  }
+  lastClickAt = now
+  if (clickTimer) window.clearTimeout(clickTimer)
+  clickTimer = window.setTimeout(() => {
+    clickTimer = undefined
+    if (lastClickAt === now) {
+      wake()
+    }
+  }, CLICK_DELAY_MS)
+}
+
+function cancelDrag(event: PointerEvent): void {
+  if (!pressOrigin || pressOrigin.pointerId !== event.pointerId) return
+  const wasDragging = isDragging.value
+  pressOrigin = undefined
+  if (wasDragging) {
+    isDragging.value = false
+    ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
+    window.api.window.endDrag()
+  }
 }
 
 function showContextMenu(): void {
@@ -175,12 +220,7 @@ async function loadPetScale(): Promise<void> {
 </script>
 
 <template>
-  <main
-    class="pet-shell"
-    :style="petShellStyle"
-    @dblclick="openRoom"
-    @contextmenu.prevent="showContextMenu"
-  >
+  <main class="pet-shell" :style="petShellStyle" @contextmenu.prevent="showContextMenu">
     <div class="pet-drag-surface">
       <div
         ref="modelHitArea"
@@ -189,8 +229,7 @@ async function loadPetScale(): Promise<void> {
         @pointerdown="startDrag"
         @pointermove="moveDrag"
         @pointerup="endDrag"
-        @pointercancel="endDrag"
-        @mousedown="wake"
+        @pointercancel="cancelDrag"
       ></div>
       <Transition name="pet-bubble">
         <div v-if="showBubble" class="pet-bubble">

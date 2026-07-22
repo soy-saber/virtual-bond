@@ -37,7 +37,7 @@
       "frames": 8,
       "columns": 4,
       "rows": 2,
-      "fps": 8,
+      "fps": 5,
       "loop": false,
       "next": "idle"
     },
