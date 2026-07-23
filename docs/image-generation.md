@@ -87,6 +87,14 @@ Virtual Bond 将图片生成与普通对话 Provider 完全隔离。普通聊天
 
 曾失败的请求是三参考图、`2048 × 1024`、`quality=high` 的组合，服务端提示对应 2K Provider 不可用。该失败只能说明特定尺寸、质量和参考图数量的路由组合不兼容，不能泛化为 4K 不可用。
 
+## 首张三段式拎起草稿
+
+2026-07-23 在用户明确批准后，使用本机 WisArt `gpt-image-2` 编辑接口生成第一张 `pickup` v4 草稿：`1536 × 1152`、`quality=medium`、`n=1`，输入为牧濑红莉栖 4K 全身母版和用户 GIF 提取的四阶段动作参考。调用只使用隔离图片 Key，Prompt 与结果均不包含 Key。
+
+草稿通过了 4 × 3、12 帧、角色身份和基本屈膝抱胸检查，但没有通过运行素材验收：第 1–2 帧脚部触边，第 5–6 帧头发越过格子上缘，后颈受力点逐帧下移，最终姿态更接近悬空坐姿而非侧向 C 形蜷曲。原始色键稿以 `resources/concepts/desktop-pet-pickup-sheet-v4-draft-key.png` 保存用于对照，没有写入皮肤 manifest；透明化结果只保留在被 Git 忽略的本地 `output/imagegen`。
+
+重试使用 `resources/prompts/desktop-pet-pickup-sheet-v4.zh-CN.md`：每格固定 `384 × 384`，后颈局部坐标约 `(192, 88) ± 6px`，四边至少 24px 纯绿安全边距，最终躯干旋转约 35–55 度。再次调用仍需用户明确批准。
+
 ## 安全约束
 
 - 禁止把真实 Key 写入源码、文档、测试、日志或 Git 历史。

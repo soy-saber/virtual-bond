@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
-import { readPngDimensions, validateSpriteSheet } from '../src/main/skin-assets'
+import {
+  readPngDimensions,
+  resolveSkinAnimationAction,
+  validateSpriteSheet
+} from '../src/main/skin-assets'
 import { loadSkinManifest, type SkinAnimation } from '../src/main/skin-loader'
 
 function pngHeader(width: number, height: number): Uint8Array {
@@ -36,6 +40,17 @@ test('reads PNG dimensions and validates a multi-row sprite sheet', () => {
 test('rejects invalid PNG data and mismatched sprite sheet dimensions', () => {
   assert.throws(() => readPngDimensions(new Uint8Array(24)), /PNG/)
   assert.throws(() => validateSpriteSheet({ width: 1024, height: 512 }, animation), /实际尺寸/)
+})
+
+test('falls back from staged dragging actions without breaking legacy skins', () => {
+  const animations = {
+    idle: animation,
+    dragging: { ...animation, file: 'animations/dragging.png' }
+  }
+  assert.equal(resolveSkinAnimationAction(animations, 'pickup'), 'dragging')
+  assert.equal(resolveSkinAnimationAction(animations, 'held-idle'), 'dragging')
+  assert.equal(resolveSkinAnimationAction(animations, 'release'), 'idle')
+  assert.equal(resolveSkinAnimationAction(animations, 'unknown'), 'idle')
 })
 
 test('validates every bundled reference companion animation against its manifest', () => {

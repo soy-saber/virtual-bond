@@ -191,7 +191,7 @@ export type MultiFloorSnapshot = {
   travelMode: 'idle' | 'walking' | 'elevator'
 }
 
-const WALK_SPEED = 260
+const WALK_SPEED = 110
 const ELEVATOR_NODE_DURATION_MS = 260
 
 export class MultiFloorStateMachine {

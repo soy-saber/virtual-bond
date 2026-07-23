@@ -60,6 +60,7 @@ test('accepts a multi-row generation grid and rejects insufficient capacity', ()
     idle.rows = 2
     idle.margin = 2
     idle.spacing = 1
+    idle.anchor = { x: 128, y: 24 }
     const directory = createSkin(root, 'grid', gridManifest)
     const animation = loadSkinManifest(directory).animations.idle
     assert.deepEqual(
@@ -67,9 +68,10 @@ test('accepts a multi-row generation grid and rejects insufficient capacity', ()
         columns: animation.columns,
         rows: animation.rows,
         margin: animation.margin,
-        spacing: animation.spacing
+        spacing: animation.spacing,
+        anchor: animation.anchor
       },
-      { columns: 4, rows: 2, margin: 2, spacing: 1 }
+      { columns: 4, rows: 2, margin: 2, spacing: 1, anchor: { x: 128, y: 24 } }
     )
 
     idle.rows = 1

@@ -13,6 +13,7 @@ export interface SkinAnimation {
   fps: number
   loop: boolean
   next?: string
+  anchor?: { x: number; y: number }
 }
 
 export interface SkinManifest {
@@ -128,6 +129,9 @@ export function loadSkinManifest(skinDirectory: string): SkinManifest {
     const name = rawName.trim()
     if (!name) throw new Error('动作名称不能为空')
     const animation = requireRecord(rawAnimation, `animations.${name}`)
+    const animationAnchor = animation.anchor
+      ? requireRecord(animation.anchor, `animations.${name}.anchor`)
+      : null
     const frames = requirePositiveInteger(animation.frames, `animations.${name}.frames`)
     const columns = requirePositiveInteger(
       animation.columns ?? frames,
@@ -150,6 +154,14 @@ export function loadSkinManifest(skinDirectory: string): SkinManifest {
       loop: animation.loop !== false,
       ...(typeof animation.next === 'string' && animation.next.trim()
         ? { next: animation.next.trim() }
+        : {}),
+      ...(animationAnchor
+        ? {
+            anchor: {
+              x: requireFiniteNumber(animationAnchor.x, `animations.${name}.anchor.x`),
+              y: requireFiniteNumber(animationAnchor.y, `animations.${name}.anchor.y`)
+            }
+          }
         : {})
     }
   }

@@ -47,11 +47,22 @@ export function validateSpriteSheet(dimensions: PngDimensions, animation: SkinAn
   }
 }
 
+export function resolveSkinAnimationAction(
+  animations: Record<string, SkinAnimation>,
+  requestedAction: string
+): string {
+  if (animations[requestedAction]) return requestedAction
+  if ((requestedAction === 'pickup' || requestedAction === 'held-idle') && animations.dragging) {
+    return 'dragging'
+  }
+  return 'idle'
+}
+
 export function loadSkinAnimationAsset(
   skin: LoadedSkin,
   requestedAction: string
 ): SkinAnimationAsset {
-  const action = skin.manifest.animations[requestedAction] ? requestedAction : 'idle'
+  const action = resolveSkinAnimationAction(skin.manifest.animations, requestedAction)
   const animation = skin.manifest.animations[action]
   const bytes = readFileSync(resolve(skin.directory, animation.file))
   validateSpriteSheet(readPngDimensions(bytes), animation)

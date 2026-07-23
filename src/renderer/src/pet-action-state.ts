@@ -1,13 +1,16 @@
-export type PetAction = 'idle' | 'interaction' | 'speaking' | 'dragging'
+export type PetAction = 'idle' | 'interaction' | 'speaking' | 'pickup' | 'held-idle' | 'release'
+
+export type PetDragState = 'idle' | 'active' | 'release'
 
 export type PetActionSignals = {
-  isDragging: boolean
+  dragState: PetDragState
   isSpeaking: boolean
   isAwake: boolean
 }
 
 export function resolvePetAction(signals: PetActionSignals): PetAction {
-  if (signals.isDragging) return 'dragging'
+  if (signals.dragState === 'active') return 'pickup'
+  if (signals.dragState === 'release') return 'release'
   if (signals.isSpeaking) return 'speaking'
   if (signals.isAwake) return 'interaction'
   return 'idle'

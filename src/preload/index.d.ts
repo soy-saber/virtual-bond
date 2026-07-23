@@ -116,6 +116,7 @@ interface SkinScanView {
           fps: number
           loop: boolean
           next?: string
+          anchor?: { x: number; y: number }
         }
       >
     }

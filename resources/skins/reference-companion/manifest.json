@@ -31,13 +31,13 @@
       "loop": true
     },
     "interaction": {
-      "file": "animations/interaction-v3.png",
+      "file": "animations/interaction-v4-local.png",
       "frameWidth": 1024,
       "frameHeight": 1024,
       "frames": 8,
       "columns": 4,
       "rows": 2,
-      "fps": 5,
+      "fps": 6,
       "loop": false,
       "next": "idle"
     },
@@ -59,7 +59,11 @@
       "columns": 4,
       "rows": 2,
       "fps": 8,
-      "loop": true
+      "loop": true,
+      "anchor": {
+        "x": 512,
+        "y": 205
+      }
     }
   }
 }

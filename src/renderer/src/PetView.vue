@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import PetSpritePlayer from './PetSpritePlayer.vue'
+import {
+  RESTING_DRAG_MOTION,
+  RESTING_DRAG_TARGET,
+  dragTargetFromPointerVelocity,
+  isPetDragMotionSettled,
+  stepPetDragMotion,
+  type PetDragMotion,
+  type PetDragMotionTarget
+} from './pet-drag-motion'
 import { resolvePetAction } from './pet-action-state'
 
 const props = defineProps<{ name: string; mood: string }>()
 const emit = defineEmits<{ openRoom: []; quickAction: [label: string] }>()
 const isAwake = ref(false)
 const isDragging = ref(false)
+const isReleasing = ref(false)
 const showBubble = ref(false)
 type SpriteLoadState = 'loading' | 'ready' | 'unavailable'
 const spriteLoadState = ref<SpriteLoadState>('loading')
@@ -16,9 +26,12 @@ const dismissButton = ref<HTMLButtonElement>()
 const spriteHitbox = ref({ left: 143, top: 110, width: 74, height: 240 })
 const petScale = ref(0.75)
 const bubbleText = ref('')
+const dragMotionX = ref(0)
+const dragMotionY = ref(0)
+const dragRotation = ref(0)
 const petAction = computed(() =>
   resolvePetAction({
-    isDragging: isDragging.value,
+    dragState: isDragging.value ? 'active' : isReleasing.value ? 'release' : 'idle',
     isSpeaking: showBubble.value,
     isAwake: isAwake.value
   })
@@ -27,11 +40,20 @@ let removeSayListener: (() => void) | undefined
 let mousePassthrough = false
 let bubbleTimer: number | undefined
 let clickTimer: number | undefined
+let releaseTimer: number | undefined
+let motionFrame: number | undefined
 let lastClickAt = 0
-let pressOrigin: { x: number; y: number; pointerId: number } | undefined
+let pressOrigin:
+  | { x: number; y: number; screenX: number; screenY: number; time: number; pointerId: number }
+  | undefined
+let lastPointerSample: { x: number; y: number; time: number } | undefined
+let dragMotion: PetDragMotion = { ...RESTING_DRAG_MOTION }
+let dragTarget: PetDragMotionTarget = { ...RESTING_DRAG_TARGET }
+let lastMotionAt = 0
 const CLICK_DELAY_MS = 280
 const DOUBLE_CLICK_WINDOW_MS = 320
 const DRAG_THRESHOLD_PX = 6
+const RELEASE_FALLBACK_MS = 720
 
 const petShellStyle = computed(() => ({
   transform: `scale(${petScale.value})`
@@ -134,6 +156,8 @@ onBeforeUnmount(() => {
   removeSayListener?.()
   if (bubbleTimer) window.clearTimeout(bubbleTimer)
   if (clickTimer) window.clearTimeout(clickTimer)
+  if (releaseTimer) window.clearTimeout(releaseTimer)
+  if (motionFrame) window.cancelAnimationFrame(motionFrame)
   document.removeEventListener('mousemove', syncMousePassthrough)
   setMousePassthrough(false)
 })
@@ -148,9 +172,80 @@ function openRoom(): void {
   emit('openRoom')
 }
 
+function syncDragMotion(): void {
+  dragMotionX.value = dragMotion.x
+  dragMotionY.value = dragMotion.y
+  dragRotation.value = dragMotion.rotation
+}
+
+function animateDragMotion(timestamp: number): void {
+  const deltaSeconds = lastMotionAt ? (timestamp - lastMotionAt) / 1000 : 1 / 60
+  lastMotionAt = timestamp
+  dragMotion = stepPetDragMotion(dragMotion, dragTarget, deltaSeconds)
+  syncDragMotion()
+  if (isDragging.value || isReleasing.value || !isPetDragMotionSettled(dragMotion)) {
+    motionFrame = window.requestAnimationFrame(animateDragMotion)
+    return
+  }
+  dragMotion = { ...RESTING_DRAG_MOTION }
+  syncDragMotion()
+  motionFrame = undefined
+  lastMotionAt = 0
+}
+
+function ensureDragMotionLoop(): void {
+  if (motionFrame) return
+  lastMotionAt = 0
+  motionFrame = window.requestAnimationFrame(animateDragMotion)
+}
+
+function updateDragTarget(event: PointerEvent): void {
+  const current = { x: event.screenX, y: event.screenY, time: event.timeStamp }
+  const previous = lastPointerSample
+  lastPointerSample = current
+  if (!previous) return
+  const elapsedSeconds = Math.max(0.004, (current.time - previous.time) / 1000)
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  dragTarget = dragTargetFromPointerVelocity(
+    (current.x - previous.x) / elapsedSeconds,
+    (current.y - previous.y) / elapsedSeconds,
+    reducedMotion
+  )
+  ensureDragMotionLoop()
+}
+
+function finishRelease(): void {
+  if (releaseTimer) window.clearTimeout(releaseTimer)
+  releaseTimer = undefined
+  isReleasing.value = false
+}
+
+function beginRelease(): void {
+  isDragging.value = false
+  isReleasing.value = true
+  lastPointerSample = undefined
+  dragTarget = { ...RESTING_DRAG_TARGET }
+  ensureDragMotionLoop()
+  if (releaseTimer) window.clearTimeout(releaseTimer)
+  releaseTimer = window.setTimeout(finishRelease, RELEASE_FALLBACK_MS)
+}
+
+function handleActionComplete(action: string): void {
+  if (action === 'release') finishRelease()
+}
+
 function startDrag(event: PointerEvent): void {
   if (event.button !== 0) return
-  pressOrigin = { x: event.clientX, y: event.clientY, pointerId: event.pointerId }
+  finishRelease()
+  pressOrigin = {
+    x: event.clientX,
+    y: event.clientY,
+    screenX: event.screenX,
+    screenY: event.screenY,
+    time: event.timeStamp,
+    pointerId: event.pointerId
+  }
+  lastPointerSample = { x: event.screenX, y: event.screenY, time: event.timeStamp }
   setMousePassthrough(false)
   ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
@@ -161,8 +256,17 @@ function moveDrag(event: PointerEvent): void {
     const distance = Math.hypot(event.clientX - pressOrigin.x, event.clientY - pressOrigin.y)
     if (distance < DRAG_THRESHOLD_PX) return
     isDragging.value = true
+    dragTarget = dragTargetFromPointerVelocity(
+      (event.screenX - pressOrigin.screenX) /
+        Math.max(0.004, (event.timeStamp - pressOrigin.time) / 1000),
+      (event.screenY - pressOrigin.screenY) /
+        Math.max(0.004, (event.timeStamp - pressOrigin.time) / 1000),
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    )
+    ensureDragMotionLoop()
     window.api.window.beginDrag()
   }
+  updateDragTarget(event)
   window.api.window.dragTo()
 }
 
@@ -170,8 +274,9 @@ function endDrag(event: PointerEvent): void {
   if (!pressOrigin || pressOrigin.pointerId !== event.pointerId) return
   const wasDragging = isDragging.value
   pressOrigin = undefined
+  lastPointerSample = undefined
   if (wasDragging) {
-    isDragging.value = false
+    beginRelease()
     ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
     window.api.window.endDrag()
     return
@@ -199,8 +304,9 @@ function cancelDrag(event: PointerEvent): void {
   if (!pressOrigin || pressOrigin.pointerId !== event.pointerId) return
   const wasDragging = isDragging.value
   pressOrigin = undefined
+  lastPointerSample = undefined
   if (wasDragging) {
-    isDragging.value = false
+    beginRelease()
     ;(event.currentTarget as HTMLElement).releasePointerCapture(event.pointerId)
     window.api.window.endDrag()
   }
@@ -242,8 +348,12 @@ async function loadPetScale(): Promise<void> {
       <PetSpritePlayer
         class="pet-sprite-player"
         :action="petAction"
+        :motion-x="dragMotionX"
+        :motion-y="dragMotionY"
+        :rotation="dragRotation"
         @ready="updateSpriteHitbox"
         @unavailable="markSpriteUnavailable"
+        @complete="handleActionComplete"
       />
       <div
         v-show="spriteLoadState === 'unavailable'"

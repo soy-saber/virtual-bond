@@ -173,9 +173,9 @@ function buildCharacter(sheetTexture: Texture, idleTexture: Texture): Container 
   characterSprite = new AnimatedSprite(frames)
   characterSprite.anchor.set(0.5, 496 / 512)
   characterSprite.scale.set(0.3)
-  characterSprite.animationSpeed = 10 / 60
+  characterSprite.animationSpeed = frames.length / 60
   characterSprite.loop = true
-  characterSprite.roundPixels = true
+  characterSprite.roundPixels = false
   characterSprite.gotoAndStop(0)
   characterIdleSprite = new Sprite(idleTexture)
   characterIdleSprite.anchor.set(0.5, 496 / 512)
